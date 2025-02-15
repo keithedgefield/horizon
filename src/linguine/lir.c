@@ -137,14 +137,6 @@ lir_build(
 	tmpvar_top = hir_func->val.func.param_count;
 	tmpvar_count = tmpvar_top;
 
-	/* Put a file name. */
-	/*
-	 * if (!lir_put_opcode(OP_FILEINFO))
-	 * 	return false;
-	 * if (!lir_put_string(hir_func->val.func.file_name))
-	 * 	return false;
-	 */
-
 	/* Visit blocks. */
 	cur_block = hir_func->val.func.inner;
 	while (cur_block != NULL) {

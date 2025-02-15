@@ -200,13 +200,13 @@ rt_create(
 	struct rt_env **rt);
 
 /* Destroy a runtime environment. */
-void
+bool
 rt_destroy(
 	struct rt_env *rt);
 
 /* Get a file name. */
 const char *
-rt_get_file_name(
+rt_get_error_file(
 	struct rt_env *rt);
 
 /* Get an error line number. */
@@ -237,11 +237,22 @@ rt_register_bytecode(
 	uint32_t size,
 	uint8_t *data);
 
-/* Register a C function. */
+/* Register a C function.. */
 bool
 rt_register_cfunc(
 	struct rt_env *rt,
 	const char *name,
+	int param_count,
+	const char *param_name[],
+	bool (*cfunc)(struct rt_env *env));
+
+/* Register a C function and set it to a dictionary. */
+bool
+rt_register_cfunc_under(
+	struct rt_env *rt,
+	const char *global_name,
+	struct rt_value *dict,
+	const char *key_name,
 	int param_count,
 	const char *param_name[],
 	bool (*cfunc)(struct rt_env *env));
@@ -435,22 +446,16 @@ bool
  * Global Variable
  */
 
-/* Register a global variable. */
-bool
-rt_register_global(
-	struct rt_env *rt,
-	const char *name);
-
 /* Get a global variable. */
 bool
-rt_load_global(
+rt_get_global(
 	struct rt_env *rt,
 	const char *name,
 	struct rt_value *val);
 
 /* Set a global variable. */
 bool
-rt_store_global(
+rt_set_global(
 	struct rt_env *rt,
 	const char *name,
 	struct rt_value *val);
@@ -459,19 +464,20 @@ rt_store_global(
  * GC
  */
 
-/* Do a shallow GC. (free already sweeped young generation objects) */
-void
+/* Do a shallow GC for nursery space. */
+bool
 rt_shallow_gc(
 	struct rt_env *rt);
 
-/* Do a full GC. (without current frame objects) */
-void
+/* Do a deep GC for tenured space. */
+bool
 rt_deep_gc(
 	struct rt_env *rt);
 
-/* Get allocated object size in bytes. */
-size_t
+/* Get an approximate memory usage in bytes. */
+bool
 rt_get_heap_usage(
-	struct rt_env *rt);
+	struct rt_env *rt,
+	size_t *ret);
 
 #endif

@@ -1,0 +1,5 @@
+func onInit() {
+}
+
+func onFrame() {
+}

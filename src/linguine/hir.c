@@ -216,27 +216,30 @@ hir_visit_func(
 		/* Set end_block to the succ of func_block. */
 		func_block->succ = end_block;
 
-		/* Pre-allocate a first inner basic block. */
-		func_block->val.func.inner = malloc(sizeof(struct hir_block));
-		if (func_block->val.func.inner == NULL) {
-			hir_out_of_memory();
-			break;
-		}
-		memset(func_block->val.func.inner, 0, sizeof(struct hir_block));
-		func_block->val.func.inner->type = HIR_BLOCK_BASIC;
-
 		/* Visit the stmt_list. */
-		cur_block = func_block->val.func.inner;
-		prev_block = NULL;
-		if (!hir_visit_stmt_list(&cur_block,		/* cur_block */
-					 &prev_block,		/* prev_block */
-					 func_block,		/* parent_block*/
-					 afunc->stmt_list))	/* stmt_list */
-			break;
+		if (afunc->stmt_list != NULL) {
+			/* Pre-allocate a first inner basic block. */
+			func_block->val.func.inner = malloc(sizeof(struct hir_block));
+			if (func_block->val.func.inner == NULL) {
+				hir_out_of_memory();
+				break;
+			}
+			memset(func_block->val.func.inner, 0, sizeof(struct hir_block));
+			func_block->val.func.inner->type = HIR_BLOCK_BASIC;
 
-		/* If the first inner block was garbage-collected. */
-		if (cur_block == NULL)
-			func_block->val.func.inner = NULL;
+			/* Visit the stmt_list. */
+			cur_block = func_block->val.func.inner;
+			prev_block = NULL;
+			if (!hir_visit_stmt_list(&cur_block,		/* cur_block */
+						 &prev_block,		/* prev_block */
+						 func_block,		/* parent_block*/
+						 afunc->stmt_list))	/* stmt_list */
+				break;
+
+			/* If the first inner block was garbage-collected. */
+			if (cur_block == NULL)
+				func_block->val.func.inner = NULL;
+		}
 
 		/* Store func_block to the table. */
 		hir_func_tbl[hir_func_count] = func_block;

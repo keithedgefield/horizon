@@ -6,7 +6,7 @@
  */
 
 /*
- * RT: Language Runtime
+ * Language Runtime
  */
 
 #include "runtime.h"
@@ -65,14 +65,48 @@ rt_create(
 /*
  *  Destroy a runtime environment.
  */
-void
+bool
 rt_destroy(
 	struct rt_env *rt)
 {
+	struct rt_string *str, *next_str;
+	struct rt_array *arr, *next_arr;
+	struct rt_dict *dict, *next_dict;
+
+	/* Free frames. */
 	while (rt->frame != NULL)
 		rt_leave_frame(rt);
 
+	/* Sweep garbages */
+	rt_shallow_gc(rt);
+
+	/* Free strongly-referenced strings. */
+	str = rt->deep_str_list;
+	while (str != NULL) {
+		next_str = rt->deep_str_list->next;
+		rt_free_string(rt, str);
+		str = next_str;
+	}
+	
+	/* Free strongly-referenced arrays. */
+	arr = rt->deep_arr_list;
+	while (arr != NULL) {
+		next_arr = arr->next;
+		rt_free_array(rt, arr);
+		arr = next_arr;
+	}
+
+	/* Free strongly-referenced dictionaries. */
+	dict = rt->deep_dict_list;
+	while (dict != NULL) {
+		next_dict = dict->next;
+		rt_free_dict(rt, rt->deep_dict_list);
+		dict = next_dict;
+	}
+
 	free(rt);
+
+	return true;
 }
 
 /*
@@ -86,10 +120,10 @@ const char *rt_get_error_message(struct rt_env *rt)
 /*
  * Get an error file name.
  */
-const char *rt_get_file_name(struct rt_env *rt)
+const char *rt_get_error_file(struct rt_env *rt)
 {
 	if (rt->frame == NULL)
-		return "";
+		return "(no func)";
 
 	return rt->frame->func->file_name;
 }
@@ -97,6 +131,9 @@ const char *rt_get_file_name(struct rt_env *rt)
 /* Get an error line number. */
 int rt_get_error_line(struct rt_env *rt)
 {
+	if (rt->frame == NULL)
+		return -1;
+
 	return rt->line;
 }
 
@@ -374,8 +411,7 @@ rt_call(
 			rt_out_of_memory(rt);
 			return false;
 		}
-		if (!rt_copy_value(rt, &bl->val, thisptr))
-			return false;
+		bl->val = *thisptr;
 	}
 
 	/* Push args. */
@@ -391,8 +427,7 @@ rt_call(
 			rt_out_of_memory(rt);
 			return false;
 		}
-		if (!rt_copy_value(rt, &bl->val, &arg[i]))
-			return false;
+		bl->val = arg[i];
 		bl->next = rt->frame->bindlocal;
 		rt->frame->bindlocal = bl;
 	}
@@ -414,8 +449,7 @@ rt_call(
 		bl = bl->next;
 	}
 	if (bl != NULL) {
-		if (!rt_copy_value(rt, ret, &bl->val))
-			return false;
+		*ret = bl->val;
 	} else {
 		ret->type = RT_VALUE_INT;
 		ret->val.i = 0;
@@ -719,7 +753,6 @@ rt_copy_value(
 	struct rt_value *src)
 {
 	*dst = *src;
-
 	return true;
 }
 
@@ -923,6 +956,10 @@ rt_set_array_elem(struct rt_env *rt, struct rt_value *array, int index, struct r
 	/* Store. */
 	array->val.arr->table[index] = *val;
 
+	/* Mark the references of the array and its element as strong. */
+	rt_make_deep_reference(rt, array);
+	rt_make_deep_reference(rt, val);
+
 	return true;
 }
 
@@ -1080,7 +1117,8 @@ rt_set_dict_elem(struct rt_env *rt, struct rt_value *dict, const char *key, stru
 	dict->val.dict->value[dict->val.dict->size] = *val;
 	dict->val.dict->size++;
 
-	/* Make a deep reference. */
+	/* Mark the references of the dictionary and its element as strong. */
+	rt_make_deep_reference(rt, dict);
 	rt_make_deep_reference(rt, val);
 
 	return true;
@@ -1149,12 +1187,12 @@ bool rt_get_local(struct rt_env *rt, const char *name, struct rt_value *val)
 	while (bl != NULL) {
 		if (strcmp(bl->name, name) == 0)
 			break;
+		bl = bl->next;
 	}
 	if (bl == NULL)
 		return false;
 
-	if (!rt_copy_value(rt, val, &bl->val))
-		return false;
+	*val = bl->val;
 
 	return true;
 }
@@ -1174,38 +1212,7 @@ bool rt_set_local(struct rt_env *rt, const char *name, struct rt_value *val)
 	if (bl == NULL)
 		return false;
 
-	if (!rt_copy_value(rt, &bl->val, val))
-		return false;
-
-	return true;
-}
-
-/*
- * Register a global variable.
- */
-bool
-rt_register_global(
-	struct rt_env *rt,
-	const char *name)
-{
-	struct rt_bindglobal *global;
-	int i;
-
-	global = malloc(sizeof(struct rt_bindglobal));
-	if (global == NULL) {
-		rt_out_of_memory(rt);
-		return false;
-	}
-
-	global->name = strdup(name);
-	if (global->name == NULL) {
-		rt_out_of_memory(rt);
-		return false;
-	}
-	global->val.type = RT_VALUE_INT;
-	global->val.val.i = 0;
-	global->next = rt->global;
-	rt->global = global;
+	bl->val = *val;
 
 	return true;
 }
@@ -1231,8 +1238,7 @@ rt_get_global(
 		return false;
 	}
 
-	if (!rt_copy_value(rt, val, &global->val))
-		return false;
+	*val = global->val;
 
 	return true;
 }
@@ -1254,12 +1260,25 @@ rt_set_global(
 			break;
 	}
 	if (global == NULL) {
-		rt_error(rt, "Global variable %d not found.", name);
-		return false;
+		global = malloc(sizeof(struct rt_bindglobal));
+		if (global == NULL) {
+			rt_out_of_memory(rt);
+			return false;
+		}
+
+		global->name = strdup(name);
+		if (global->name == NULL) {
+			rt_out_of_memory(rt);
+			return false;
+		}
+		global->val.type = RT_VALUE_INT;
+		global->val.val.i = 0;
+
+		global->next = rt->global;
+		rt->global = global;
 	}
 
-	if (!rt_copy_value(rt, &global->val, val))
-		return false;
+	global->val = *val;
 
 	return true;
 }
@@ -1290,6 +1309,197 @@ rt_out_of_memory(
  * GC
  */
 
+/*
+ * Do a shallow GC for nursery space.
+ */
+bool
+rt_shallow_gc(
+	struct rt_env *rt)
+{
+	struct rt_string *str, *next_str;
+	struct rt_array *arr, *next_arr;
+	struct rt_dict *dict, *next_dict;
+
+	/*
+	 * A nursery space belongs to a calling frame.
+	 * An object first created in a nursery space,
+	 * and when it get a strong reference,
+	 * it is moved to the tenured space.
+	 * Objects in a nursery space are released by rt_leave_frame(),
+	 * and are moved to the garbage list.
+	 * The shallow GC sweeps such objects in the garbage list.
+	 */
+
+	str = rt->garbage_str_list;
+	while (str != NULL) {
+		next_str = str->next;
+		rt_free_string(rt, str);
+		str = next_str;
+	}
+	rt->garbage_str_list = NULL;
+
+	arr = rt->garbage_arr_list;
+	while (arr != NULL) {
+		next_arr = arr->next;
+		rt_free_array(rt, arr);
+		arr = next_arr;
+	}
+	rt->garbage_arr_list = NULL;
+
+	dict = rt->garbage_dict_list;
+	while (dict != NULL) {
+		next_dict = dict->next;
+		rt_free_dict(rt, dict);
+		dict = next_dict;
+	}
+	rt->garbage_arr_list = NULL;
+
+	return true;
+}
+
+/*
+ * Do a deep GC. (tenured space GC)
+ */
+bool
+rt_deep_gc(
+	struct rt_env *rt)
+{
+	struct rt_string *str, *next_str;
+	struct rt_array *arr, *next_arr;
+	struct rt_dict *dict, *next_dict;
+	struct rt_bindglobal *global;
+
+	/*
+	 * We do a full mark-and-sweep GC for objects in the tenured space.
+	 * For now, objects in nersery spaces are not affected by this deep GC.
+	 */
+
+	/* First, do a shallow GC and sweep objects in the garbage lists. */
+	rt_shallow_gc(rt);
+
+	/* Clear marks of strings with strong references. */
+	str = rt->deep_str_list;
+	while (str != NULL) {
+		str->is_marked = false;
+		str = str->next;
+	}
+	
+	/* Clear marks of arrays with a strong references. */
+	arr = rt->deep_arr_list;
+	while (arr != NULL) {
+		arr->is_marked = false;
+		arr = arr->next;
+	}
+
+	/* Clear marks of dictionaries with strong references. */
+	dict = rt->deep_dict_list;
+	while (dict != NULL) {
+		dict->is_marked = false;
+		dict = dict->next;
+	}
+
+	/* Recursively mark all objects that are referenced by the global variables. */
+	global = rt->global;
+	while (global != NULL) {
+		rt_recursively_mark_object(rt, &global->val);
+		global = global->next;
+	}
+
+	/* Sweep strings without marks. */
+	str = rt->deep_str_list;
+	while (str != NULL) {
+		next_str = str->next;
+		if (!str->is_marked) {
+			/* Unlink. */
+			if (str->prev != NULL) {
+				str->prev->next = str->next;
+				str->next->prev = str->prev;
+			} else {
+				str->next->prev = NULL;
+				rt->deep_str_list = str->next;
+			}
+
+			/* Remove. */
+			rt_free_string(rt, str);
+		}
+		str = next_str;
+	}
+
+	/* Sweep arrays without marks. */
+	arr = rt->deep_arr_list;
+	while (arr != NULL) {
+		next_arr = arr->next;
+		if (!arr->is_marked) {
+			/* Unlink. */
+			if (arr->prev != NULL) {
+				arr->prev->next = arr->next;
+				arr->next->prev = arr->prev;
+			} else {
+				arr->next->prev = NULL;
+				rt->deep_arr_list = arr->next;
+			}
+
+			/* Remove. */
+			rt_free_array(rt, arr);
+		}
+		arr = next_arr;
+	}
+
+	/* Sweep dictionaries without marks. */
+	dict = rt->deep_dict_list;
+	while (dict != NULL) {
+		next_dict = dict->next;
+		if (!dict->is_marked) {
+			/* Unlink. */
+			if (dict->prev != NULL) {
+				dict->prev->next = dict->next;
+				dict->next->prev = dict->prev;
+			} else {
+				dict->next->prev = NULL;
+				rt->deep_arr_list = arr->next;
+			}
+
+			/* Remove. */
+			rt_free_dict(rt, dict);
+		}
+		dict = next_dict;
+	}
+
+	return true;
+}
+
+/* Mark objects recursively as used. */
+static void
+rt_recursively_mark_object(
+	struct rt_env *rt,
+	struct rt_value *val)
+{
+	int i;
+
+	switch (val->type) {
+	case RT_VALUE_INT:
+	case RT_VALUE_FLOAT:
+		break;
+	case RT_VALUE_STRING:
+		val->val.str->is_marked = true;
+		break;
+	case RT_VALUE_ARRAY:
+		for (i = 0; i < val->val.arr->size; i++)
+			rt_recursively_mark_object(rt, &val->val.arr->table[i]);
+		break;
+	case RT_VALUE_DICT:
+		for (i = 0; i < val->val.dict->size; i++)
+			rt_recursively_mark_object(rt, &val->val.dict->value[i]);
+		break;
+	case RT_VALUE_FUNC:
+		break;
+	default:
+		assert(NEVER_COME_HERE);
+		break;
+	}
+}
+
+/* Set the reference of a value's object as strong.  */
 static void
 rt_make_deep_reference(
 	struct rt_env *rt,
@@ -1301,6 +1511,7 @@ rt_make_deep_reference(
 	switch (val->type) {
 	case RT_VALUE_INT:
 	case RT_VALUE_FLOAT:
+	case RT_VALUE_FUNC:
 		break;
 	case RT_VALUE_STRING:
 		if (!val->val.str->is_deep) {
@@ -1368,167 +1579,7 @@ rt_make_deep_reference(
 	}
 }
 
-void
-rt_shallow_gc(
-	struct rt_env *rt)
-{
-	struct rt_string *str, *next_str;
-	struct rt_array *arr, *next_arr;
-	struct rt_dict *dict, *next_dict;
-
-	str = rt->garbage_str_list;
-	while (str != NULL) {
-		next_str = str->next;
-		rt_free_string(rt, str);
-		str = next_str;
-	}
-	rt->garbage_str_list = NULL;
-
-	arr = rt->garbage_arr_list;
-	while (arr != NULL) {
-		next_arr = arr->next;
-		rt_free_array(rt, arr);
-		arr = next_arr;
-	}
-	rt->garbage_arr_list = NULL;
-
-	dict = rt->garbage_dict_list;
-	while (dict != NULL) {
-		next_dict = dict->next;
-		rt_free_dict(rt, dict);
-		dict = next_dict;
-	}
-	rt->garbage_arr_list = NULL;
-}
-
-void
-rt_deep_gc(
-	struct rt_env *rt)
-{
-	struct rt_string *str, *next_str;
-	struct rt_array *arr, *next_arr;
-	struct rt_dict *dict, *next_dict;
-	struct rt_bindglobal *global;
-
-	/* Clear string marks. */
-	str = rt->deep_str_list;
-	while (str != NULL) {
-		str->is_marked = false;
-		str = str->next;
-	}
-	
-	/* Clear array marks. */
-	arr = rt->deep_arr_list;
-	while (arr != NULL) {
-		arr->is_marked = false;
-		arr = arr->next;
-	}
-
-	/* Clear dictionary marks. */
-	dict = rt->deep_dict_list;
-	while (dict != NULL) {
-		dict->is_marked = false;
-		dict = dict->next;
-	}
-
-	/* Mark. */
-	global = rt->global;
-	while (global != NULL) {
-		rt_recursively_mark_object(rt, &global->val);
-		global = global->next;
-	}
-
-	/* Sweep strings. */
-	str = rt->deep_str_list;
-	while (str != NULL) {
-		next_str = str->next;
-		if (!str->is_marked) {
-			/* Unlink. */
-			if (str->prev != NULL) {
-				str->prev->next = str->next;
-				str->next->prev = str->prev;
-			} else {
-				str->next->prev = NULL;
-				rt->deep_str_list = str->next;
-			}
-
-			/* Remove. */
-			rt_free_string(rt, str);
-		}
-		str = next_str;
-	}
-
-	/* Sweep arrays. */
-	arr = rt->deep_arr_list;
-	while (arr != NULL) {
-		next_arr = arr->next;
-		if (!arr->is_marked) {
-			/* Unlink. */
-			if (arr->prev != NULL) {
-				arr->prev->next = arr->next;
-				arr->next->prev = arr->prev;
-			} else {
-				arr->next->prev = NULL;
-				rt->deep_arr_list = arr->next;
-			}
-
-			/* Remove. */
-			rt_free_array(rt, arr);
-		}
-		arr = next_arr;
-	}
-
-	/* Sweep dictionaries. */
-	dict = rt->deep_dict_list;
-	while (dict != NULL) {
-		next_dict = dict->next;
-		if (!dict->is_marked) {
-			/* Unlink. */
-			if (dict->prev != NULL) {
-				dict->prev->next = dict->next;
-				dict->next->prev = dict->prev;
-			} else {
-				dict->next->prev = NULL;
-				rt->deep_arr_list = arr->next;
-			}
-
-			/* Remove. */
-			rt_free_dict(rt, dict);
-		}
-		dict = next_dict;
-	}
-}
-
-static void
-rt_recursively_mark_object(
-	struct rt_env *rt,
-	struct rt_value *val)
-{
-	int i;
-
-	switch (val->type) {
-	case RT_VALUE_INT:
-	case RT_VALUE_FLOAT:
-		break;
-	case RT_VALUE_STRING:
-		val->val.str->is_marked = true;
-		break;
-	case RT_VALUE_ARRAY:
-		for (i = 0; i < val->val.arr->size; i++)
-			rt_recursively_mark_object(rt, &val->val.arr->table[i]);
-		break;
-	case RT_VALUE_DICT:
-		for (i = 0; i < val->val.dict->size; i++)
-			rt_recursively_mark_object(rt, &val->val.dict->value[i]);
-		break;
-	case RT_VALUE_FUNC:
-		break;
-	default:
-		assert(NEVER_COME_HERE);
-		break;
-	}
-}
-
+/* Free a string. */
 static void
 rt_free_string(
 	struct rt_env *rt,
@@ -1538,6 +1589,7 @@ rt_free_string(
 	free(str);
 }
 
+/* Free an array. */
 static void
 rt_free_array(
 	struct rt_env *rt,
@@ -1547,6 +1599,7 @@ rt_free_array(
 	free(array);
 }
 
+/* Free a dictionary. */
 static void
 rt_free_dict(
 	struct rt_env *rt,
@@ -1557,16 +1610,18 @@ rt_free_dict(
 	free(dict);
 }
 
-/* Get allocated object size in bytes. */
-size_t
+/* Get an approximate memory usage in bytes. */
+bool
 rt_get_heap_usage(
-	struct rt_env *rt)
+	struct rt_env *rt,
+	size_t *ret)
 {
-	return rt->heap_usage;
+	*ret = rt->heap_usage;
+	return true;
 }
 
 /*
- * Instructions
+ * Instruction Interpretation
  */
 
 /* Visit a bytecode array. */
@@ -1617,8 +1672,7 @@ rt_visit_assign_op(
 		return false;
 	}
 
-	if (!rt_copy_value(rt, &rt->frame->tmpvar[dst], &rt->frame->tmpvar[src]))
-		return false;
+	rt->frame->tmpvar[dst] = rt->frame->tmpvar[src];
 
 	*pc += 1 + 2 + 2;
 
@@ -3572,8 +3626,7 @@ rt_visit_storesymbol_op(
 	local = rt->frame->bindlocal;
 	while (local != NULL) {
 		if (strcmp(local->name, symbol) == 0) {
-			if (!rt_copy_value(rt, &local->val, &rt->frame->tmpvar[src]))
-				return false;
+			local->val = rt->frame->tmpvar[src];
 			break;
 		}
 		local = local->next;
@@ -3585,8 +3638,7 @@ rt_visit_storesymbol_op(
 		global = rt->global;
 		while (global != NULL) {
 			if (strcmp(global->name, symbol) == 0) {
-				if (!rt_copy_value(rt, &global->val, &rt->frame->tmpvar[src]))
-					return false;
+				global->val = rt->frame->tmpvar[src];
 				rt_make_deep_reference(rt, &global->val);
 				break;
 			}
@@ -3607,8 +3659,7 @@ rt_visit_storesymbol_op(
 			rt_out_of_memory(rt);
 			return false;
 		}
-		if (!rt_copy_value(rt, &local->val, &rt->frame->tmpvar[src]))
-			return false;
+		local->val = rt->frame->tmpvar[src];
 		if (!rt_ref_value(rt, &local->val))
 			return false;
 		local->next = rt->frame->bindlocal;
@@ -3772,8 +3823,7 @@ rt_visit_call_op(
 
 	rt_leave_frame(rt);
 
-	if (!rt_copy_value(rt, &rt->frame->tmpvar[dst_tmpvar], &ret))
-		return false;
+	rt->frame->tmpvar[dst_tmpvar] = ret;
 
 	*pc += 6 + arg_count * 2;
 
@@ -3850,8 +3900,7 @@ rt_visit_thiscall_op(
 
 	rt_leave_frame(rt);
 
-	if (!rt_copy_value(rt, &rt->frame->tmpvar[dst_tmpvar], &ret))
-		return false;
+	rt->frame->tmpvar[dst_tmpvar] = ret;
 
 	*pc += 1 + 2 + 2 + len + 1 + 1 + arg_count * 2;
 
