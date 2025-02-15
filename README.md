@@ -1,58 +1,21 @@
 Horizon
 =======
 
-```
-Dear my friend,
+`Horizon` is a scripting infrastructure for multimedia arts including games.
 
-This is the starting point to me and to you!
+## Linguine
 
-Regards,
-Keith
-```
+* Works made with `Horizon` are written in `Linguine`, our project's scripting language.
+* Linguine focuses on easiness because of our belief; talents to make fun games are different than one to write complex code.
+* For development, Linguine runs on interpreter and JIT compiler.
+* For production, Linguine runs natively after compiled into a native binary.
+* Linguine is interoperable with C; they may be mixed.
 
-## Overview
+## GameKits
 
-* `Horizon` (code name) is a scripting infrastructure for games and multimedia arts.
-* `Horizon` works on various platforms including PC, Mac, smartphones, tablets, and gaming consoles.
-* `Horizon` is a free software and is intended to be used by indie developers.
-
-## Scripting Language
-
-* Works made with `Horizon` are written in `Linguine` (code name), our project's scripting language.
-* I focus on easiness of the scripting language because I have a belief that talents to make fun games are different than one to write complex code.
-* For speed-sensitive codes, users may write C functions and may call them from scripts seamlessly.
-* All scripts may be compiled into a binary by our `release mode`, and thus, it runs at a native speed, wow!
-* All scripts may be transpiled to C source codes that use Unity or Unreal Engine.
-    * This is because OSS projects cannot generate binaries by using proprietary SDKs of game console vendors.
-
-## Porting Layer
-
-* We use an approach to have `Hardware Abstraction Layer` (HAL) on the very bottom of our code in order to realize a portability.
-* HAL is called `MediaKit` (code name).
-
-## System Structure
-
-```
-    +-------------------------+
-    |         User App        |
-    +-------------------------+
-    |         GameKits        |
-    +-------------------------+
-	|    Linguine Bindings    |
-    +------------+------------+
-    |  Linguine  |  MediaKit  |
-    -------------+------------+
-```
-
-Let me explain it from the bottom...
-
-* We have two base layers: `Linguine` and `MediaKit`.
-    * `Linguine` and `MediaKit` are comletely independent software written in C.
-* We have an upper layer called `Linguine Bindings` on top of the two base layers.
-    * `Linguine Bindings` enables programmers to call `MediaKit` C functions in `Linguine` codes.
-* We have an upper layer called `GameKits`.
-    * `GameKits` consist of some building blocks for games.
-	* A game building block is intended for making a game of a specific gaming genre.
-    * For example, we may have `NovelKit` and `3D RPG Kit`.
-    * Users may write a `GameKit`. 
-* `User App` will be made ontop of `GameKits`.
+* Horizon has some genre-oriented game building blocks called `GameKits`.
+* Our plan includes:
+    * BaseKit ... 3D, audio, input and storage API
+    * ActionKit ... Library for action games
+    * 2DRPGKit ... Library for 2D RPG
+    * 3DRPGKit ... Library for 3D RPG

@@ -9,11 +9,18 @@
  * Language Runtime
  */
 
+/*
+ * [configuration]
+ *  - CONF_RUNTIME_ONLY ... No source compilation features.
+ */
+
 #include "runtime.h"
+
+#if !defined(CONF_RUNTIME_ONLY)
 #include "ast.h"
 #include "hir.h"
 #include "lir.h"
-#include "bytecode.h"
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -167,7 +174,7 @@ rt_register_source(
 		/* Transform AST to HIR. */
 		if (!hir_build()) {
 			rt_error(rt,
-				 "%s",
+				 "%s:%d: error: %s",
 				 hir_get_file_name(),
 				 hir_get_error_line(),
 				 hir_get_error_message());
@@ -351,6 +358,7 @@ bool
 rt_call_with_name(
 	struct rt_env *rt,
 	const char *func_name,
+	struct rt_value *thisptr,
 	int arg_count,
 	struct rt_value *arg,
 	struct rt_value *ret)
@@ -373,14 +381,14 @@ rt_call_with_name(
 	func = bg->val.val.func;
 
 	/* Call. */
-	if (!rt_call(rt, func, NULL, arg_count, arg, ret))
+	if (!rt_call(rt, func, thisptr, arg_count, arg, ret))
 		return false;
 
 	return true;
 }
 
 /*
- * Call a function object.
+ * Call a function.
  */
 bool
 rt_call(
@@ -890,6 +898,23 @@ rt_get_string(
 	return true;
 }
 
+/* Get a function value. */
+bool
+rt_get_func(
+	struct rt_env *rt,
+	struct rt_value *val,
+	struct rt_func **ret)
+{
+	assert(rt != NULL);
+	assert(val != NULL);
+	assert(val->type == RT_VALUE_FUNC);
+	assert(val->val.func != NULL);
+
+	*ret = val->val.func;
+
+	return true;
+}
+
 /*
  * Get an array size.
  */
@@ -1232,6 +1257,7 @@ rt_get_global(
 	while (global != NULL) {
 		if (strcmp(global->name, name) == 0)
 			break;
+		global = global->next;
 	}
 	if (global == NULL) {
 		rt_error(rt, "Global variable %d not found.", name);
@@ -1641,7 +1667,7 @@ rt_visit_bytecode(
 	return true;
 }
 
-/* Visit an OP_ASSIGN instruction. */
+/* Visit an ROP_ASSIGN instruction. */
 static inline bool
 rt_visit_assign_op(
 	struct rt_env *rt,
@@ -1651,7 +1677,7 @@ rt_visit_assign_op(
 	uint32_t dst;
 	uint32_t src;
 
-	assert(func->bytecode[*pc] == OP_ASSIGN);
+	assert(func->bytecode[*pc] == ROP_ASSIGN);
 
 	if (*pc + 1 + 2 + 2 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -1679,7 +1705,7 @@ rt_visit_assign_op(
 	return true;
 }
 
-/* Visit an OP_ICONST instruction. */
+/* Visit an ROP_ICONST instruction. */
 static inline bool
 rt_visit_iconst_op(
 	struct rt_env *rt,
@@ -1689,7 +1715,7 @@ rt_visit_iconst_op(
 	uint32_t dst;
 	uint32_t val;
 
-	assert(func->bytecode[*pc] == OP_ICONST);
+	assert(func->bytecode[*pc] == ROP_ICONST);
 
 	if (*pc + 1 + 2 + 4 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -1716,7 +1742,7 @@ rt_visit_iconst_op(
 	return true;
 }
 
-/* Visit an OP_FCONST instruction. */
+/* Visit an ROP_FCONST instruction. */
 static inline bool
 rt_visit_fconst_op(
 	struct rt_env *rt,
@@ -1727,7 +1753,7 @@ rt_visit_fconst_op(
 	uint32_t raw;
 	float val;
 
-	assert(func->bytecode[*pc] == OP_FCONST);
+	assert(func->bytecode[*pc] == ROP_FCONST);
 
 	if (*pc + 1 + 2 + 4 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -1756,7 +1782,7 @@ rt_visit_fconst_op(
 	return true;
 }
 
-/* Visit an OP_SCONST instruction. */
+/* Visit an ROP_SCONST instruction. */
 static inline bool
 rt_visit_sconst_op(
 	struct rt_env *rt,
@@ -1767,7 +1793,7 @@ rt_visit_sconst_op(
 	const char *s;
 	int len;
 
-	assert(func->bytecode[*pc] == OP_SCONST);
+	assert(func->bytecode[*pc] == ROP_SCONST);
 
 	if (*pc + 1 + 2  > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -1796,7 +1822,7 @@ rt_visit_sconst_op(
 	return true;
 }
 
-/* Visit an OP_ACONST instruction. */
+/* Visit an ROP_ACONST instruction. */
 static inline bool
 rt_visit_aconst_op(
 	struct rt_env *rt,
@@ -1805,7 +1831,7 @@ rt_visit_aconst_op(
 {
 	uint32_t dst;
 
-	assert(func->bytecode[*pc] == OP_ACONST);
+	assert(func->bytecode[*pc] == ROP_ACONST);
 
 	if (*pc + 1 + 2  > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -1827,7 +1853,7 @@ rt_visit_aconst_op(
 	return true;
 }
 
-/* Visit an OP_DCONST instruction. */
+/* Visit an ROP_DCONST instruction. */
 static inline bool
 rt_visit_dconst_op(
 	struct rt_env *rt,
@@ -1836,7 +1862,7 @@ rt_visit_dconst_op(
 {
 	uint32_t dst;
 
-	assert(func->bytecode[*pc] == OP_DCONST);
+	assert(func->bytecode[*pc] == ROP_DCONST);
 
 	if (*pc + 1 + 2  > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -1858,7 +1884,7 @@ rt_visit_dconst_op(
 	return true;
 }
 
-/* Visit an OP_INC instruction. */
+/* Visit an ROP_INC instruction. */
 static inline bool
 rt_visit_inc_op(
 	struct rt_env *rt,
@@ -1868,7 +1894,7 @@ rt_visit_inc_op(
 	struct rt_value *val;
 	uint32_t dst;
 
-	assert(func->bytecode[*pc] == OP_INC);
+	assert(func->bytecode[*pc] == ROP_INC);
 
 	if (*pc + 1 + 2 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -1894,7 +1920,7 @@ rt_visit_inc_op(
 	return true;
 }
 
-/* Visit an OP_ADD instruction. */
+/* Visit an ROP_ADD instruction. */
 static inline bool
 rt_visit_add_op(
 	struct rt_env *rt,
@@ -1908,7 +1934,7 @@ rt_visit_add_op(
 	struct rt_value *src1_val;
 	struct rt_value *src2_val;
 
-	assert(func->bytecode[*pc] == OP_ADD);
+	assert(func->bytecode[*pc] == ROP_ADD);
 
 	if (*pc + 1 + 2 + 2 + 2 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -2007,7 +2033,7 @@ rt_visit_add_op(
 	return true;
 }
 
-/* Visit an OP_SUB instruction. */
+/* Visit an ROP_SUB instruction. */
 static inline bool
 rt_visit_sub_op(
 	struct rt_env *rt,
@@ -2021,7 +2047,7 @@ rt_visit_sub_op(
 	struct rt_value *src1_val;
 	struct rt_value *src2_val;
 
-	assert(func->bytecode[*pc] == OP_SUB);
+	assert(func->bytecode[*pc] == ROP_SUB);
 
 	if (*pc + 1 + 2 + 2 + 2 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -2093,7 +2119,7 @@ rt_visit_sub_op(
 	return true;
 }
 
-/* Visit an OP_MUL instruction. */
+/* Visit an ROP_MUL instruction. */
 static inline bool
 rt_visit_mul_op(
 	struct rt_env *rt,
@@ -2107,7 +2133,7 @@ rt_visit_mul_op(
 	struct rt_value *src1_val;
 	struct rt_value *src2_val;
 
-	assert(func->bytecode[*pc] == OP_MUL);
+	assert(func->bytecode[*pc] == ROP_MUL);
 
 	if (*pc + 1 + 2 + 2 + 2 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -2179,7 +2205,7 @@ rt_visit_mul_op(
 	return true;
 }
 
-/* Visit an OP_DIV instruction. */
+/* Visit an ROP_DIV instruction. */
 static inline bool
 rt_visit_div_op(
 	struct rt_env *rt,
@@ -2193,7 +2219,7 @@ rt_visit_div_op(
 	struct rt_value *src1_val;
 	struct rt_value *src2_val;
 
-	assert(func->bytecode[*pc] == OP_DIV);
+	assert(func->bytecode[*pc] == ROP_DIV);
 
 	if (*pc + 1 + 2 + 2 + 2 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -2265,7 +2291,7 @@ rt_visit_div_op(
 	return true;
 }
 
-/* Visit an OP_MOD instruction. */
+/* Visit an ROP_MOD instruction. */
 static inline bool
 rt_visit_mod_op(
 	struct rt_env *rt,
@@ -2279,7 +2305,7 @@ rt_visit_mod_op(
 	struct rt_value *src1_val;
 	struct rt_value *src2_val;
 
-	assert(func->bytecode[*pc] == OP_MOD);
+	assert(func->bytecode[*pc] == ROP_MOD);
 
 	if (*pc + 1 + 2 + 2 + 2 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -2332,7 +2358,7 @@ rt_visit_mod_op(
 	return true;
 }
 
-/* Visit an OP_AND instruction. */
+/* Visit an ROP_AND instruction. */
 static inline bool
 rt_visit_and_op(
 	struct rt_env *rt,
@@ -2346,7 +2372,7 @@ rt_visit_and_op(
 	struct rt_value *src1_val;
 	struct rt_value *src2_val;
 
-	assert(func->bytecode[*pc] == OP_AND);
+	assert(func->bytecode[*pc] == ROP_AND);
 
 	if (*pc + 1 + 2 + 2 + 2 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -2399,7 +2425,7 @@ rt_visit_and_op(
 	return true;
 }
 
-/* Visit an OP_OR instruction. */
+/* Visit an ROP_OR instruction. */
 static inline bool
 rt_visit_or_op(
 	struct rt_env *rt,
@@ -2413,7 +2439,7 @@ rt_visit_or_op(
 	struct rt_value *src1_val;
 	struct rt_value *src2_val;
 
-	assert(func->bytecode[*pc] == OP_OR);
+	assert(func->bytecode[*pc] == ROP_OR);
 
 	if (*pc + 1 + 2 + 2 + 2 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -2466,7 +2492,7 @@ rt_visit_or_op(
 	return true;
 }
 
-/* Visit an OP_XOR instruction. */
+/* Visit an ROP_XOR instruction. */
 static inline bool
 rt_visit_xor_op(
 	struct rt_env *rt,
@@ -2480,7 +2506,7 @@ rt_visit_xor_op(
 	struct rt_value *src1_val;
 	struct rt_value *src2_val;
 
-	assert(func->bytecode[*pc] == OP_XOR);
+	assert(func->bytecode[*pc] == ROP_XOR);
 
 	if (*pc + 1 + 2 + 2 + 2 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -2533,7 +2559,7 @@ rt_visit_xor_op(
 	return true;
 }
 
-/* Visit an OP_NEG instruction. */
+/* Visit an ROP_NEG instruction. */
 static inline bool
 rt_visit_neg_op(
 	struct rt_env *rt,
@@ -2545,7 +2571,7 @@ rt_visit_neg_op(
 	struct rt_value *dst_val;
 	struct rt_value *src_val;
 
-	assert(func->bytecode[*pc] == OP_NEG);
+	assert(func->bytecode[*pc] == ROP_NEG);
 
 	if (*pc + 1 + 2 + 2 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -2583,7 +2609,7 @@ rt_visit_neg_op(
 	return true;
 }
 
-/* Visit an OP_LT instruction. */
+/* Visit an ROP_LT instruction. */
 static inline bool
 rt_visit_lt_op(
 	struct rt_env *rt,
@@ -2597,7 +2623,7 @@ rt_visit_lt_op(
 	struct rt_value *src1_val;
 	struct rt_value *src2_val;
 
-	assert(func->bytecode[*pc] == OP_LT);
+	assert(func->bytecode[*pc] == ROP_LT);
 
 	if (*pc + 1 + 2 + 2 + 2 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -2679,7 +2705,7 @@ rt_visit_lt_op(
 	return true;
 }
 
-/* Visit an OP_LTE instruction. */
+/* Visit an ROP_LTE instruction. */
 static inline bool
 rt_visit_lte_op(
 	struct rt_env *rt,
@@ -2693,7 +2719,7 @@ rt_visit_lte_op(
 	struct rt_value *src1_val;
 	struct rt_value *src2_val;
 
-	assert(func->bytecode[*pc] == OP_LTE);
+	assert(func->bytecode[*pc] == ROP_LTE);
 
 	if (*pc + 1 + 2 + 2 + 2 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -2775,7 +2801,7 @@ rt_visit_lte_op(
 	return true;
 }
 
-/* Visit an OP_GT instruction. */
+/* Visit an ROP_GT instruction. */
 static inline bool
 rt_visit_gt_op(
 	struct rt_env *rt,
@@ -2789,7 +2815,7 @@ rt_visit_gt_op(
 	struct rt_value *src1_val;
 	struct rt_value *src2_val;
 
-	assert(func->bytecode[*pc] == OP_GT);
+	assert(func->bytecode[*pc] == ROP_GT);
 
 	if (*pc + 1 + 2 + 2 + 2 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -2871,7 +2897,7 @@ rt_visit_gt_op(
 	return true;
 }
 
-/* Visit an OP_GTE instruction. */
+/* Visit an ROP_GTE instruction. */
 static inline bool
 rt_visit_gte_op(
 	struct rt_env *rt,
@@ -2885,7 +2911,7 @@ rt_visit_gte_op(
 	struct rt_value *src1_val;
 	struct rt_value *src2_val;
 
-	assert(func->bytecode[*pc] == OP_GTE);
+	assert(func->bytecode[*pc] == ROP_GTE);
 
 	if (*pc + 1 + 2 + 2 + 2 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -2967,7 +2993,7 @@ rt_visit_gte_op(
 	return true;
 }
 
-/* Visit an OP_EQ instruction. */
+/* Visit an ROP_EQ instruction. */
 static inline bool
 rt_visit_eq_op(
 	struct rt_env *rt,
@@ -2981,7 +3007,7 @@ rt_visit_eq_op(
 	struct rt_value *src1_val;
 	struct rt_value *src2_val;
 
-	assert(func->bytecode[*pc] == OP_EQ);
+	assert(func->bytecode[*pc] == ROP_EQ);
 
 	if (*pc + 1 + 2 + 2 + 2 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -3063,7 +3089,7 @@ rt_visit_eq_op(
 	return true;
 }
 
-/* Visit an OP_NEQ instruction. */
+/* Visit an ROP_NEQ instruction. */
 static inline bool
 rt_visit_neq_op(
 	struct rt_env *rt,
@@ -3077,7 +3103,7 @@ rt_visit_neq_op(
 	struct rt_value *src1_val;
 	struct rt_value *src2_val;
 
-	assert(func->bytecode[*pc] == OP_NEQ);
+	assert(func->bytecode[*pc] == ROP_NEQ);
 
 	if (*pc + 1 + 2 + 2 + 2 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -3159,7 +3185,7 @@ rt_visit_neq_op(
 	return true;
 }
 
-/* Visit an OP_STOREARRAY instruction. */
+/* Visit an ROP_STOREARRAY instruction. */
 static inline bool
 rt_visit_storearray_op(
 	struct rt_env *rt,
@@ -3177,7 +3203,7 @@ rt_visit_storearray_op(
 	const char *key;
 	bool is_dict;
 
-	assert(func->bytecode[*pc] == OP_STOREARRAY);
+	assert(func->bytecode[*pc] == ROP_STOREARRAY);
 
 	if (*pc + 1 + 2 + 2 + 2 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -3248,7 +3274,7 @@ rt_visit_storearray_op(
 	return true;
 }
 
-/* Visit an OP_LOADARRAY instruction. */
+/* Visit an ROP_LOADARRAY instruction. */
 static inline bool
 rt_visit_loadarray_op(
 	struct rt_env *rt,
@@ -3265,7 +3291,7 @@ rt_visit_loadarray_op(
 	const char *key;
 	bool is_dict;
 
-	assert(func->bytecode[*pc] == OP_LOADARRAY);
+	assert(func->bytecode[*pc] == ROP_LOADARRAY);
 
 	if (*pc + 1 + 2 + 2 + 2 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -3336,7 +3362,7 @@ rt_visit_loadarray_op(
 	return true;
 }
 
-/* Visit an OP_LEN instruction. */
+/* Visit an ROP_LEN instruction. */
 static inline bool
 rt_visit_len_op(
 	struct rt_env *rt,
@@ -3348,7 +3374,7 @@ rt_visit_len_op(
 	struct rt_value *dst_val;
 	struct rt_value *src_val;
 
-	assert(func->bytecode[*pc] == OP_LEN);
+	assert(func->bytecode[*pc] == ROP_LEN);
 
 	if (*pc + 1 + 2 + 2 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -3394,7 +3420,7 @@ rt_visit_len_op(
 	return true;
 }
 
-/* Visit an OP_GETDICTKEYBYINDEX instruction. */
+/* Visit an ROP_GETDICTKEYBYINDEX instruction. */
 static inline bool
 rt_visit_getdictkeybyindex_op(
 	struct rt_env *rt,
@@ -3411,7 +3437,7 @@ rt_visit_getdictkeybyindex_op(
 	const char *key;
 	bool is_dict;
 
-	assert(func->bytecode[*pc] == OP_GETDICTKEYBYINDEX);
+	assert(func->bytecode[*pc] == ROP_GETDICTKEYBYINDEX);
 
 	if (*pc + 1 + 2 + 2 + 2 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -3466,7 +3492,7 @@ rt_visit_getdictkeybyindex_op(
 	return true;
 }
 
-/* Visit an OP_GETDICTVALBYINDEX instruction. */
+/* Visit an ROP_GETDICTVALBYINDEX instruction. */
 static inline bool
 rt_visit_getdictvalbyindex_op(
 	struct rt_env *rt,
@@ -3483,7 +3509,7 @@ rt_visit_getdictvalbyindex_op(
 	const char *key;
 	bool is_dict;
 
-	assert(func->bytecode[*pc] == OP_GETDICTVALBYINDEX);
+	assert(func->bytecode[*pc] == ROP_GETDICTVALBYINDEX);
 
 	if (*pc + 1 + 2 + 2 + 2 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -3537,7 +3563,7 @@ rt_visit_getdictvalbyindex_op(
 	return true;
 }
 
-/* Visit an OP_LOADYMBOL instruction. */
+/* Visit an ROP_LOADYMBOL instruction. */
 static inline bool
 rt_visit_loadsymbol_op(
 	struct rt_env *rt,
@@ -3550,7 +3576,7 @@ rt_visit_loadsymbol_op(
 	struct rt_bindglobal *global;
 	int len;
 
-	assert(func->bytecode[*pc] == OP_LOADSYMBOL);
+	assert(func->bytecode[*pc] == ROP_LOADSYMBOL);
 
 	if (*pc + 1 + 2 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -3599,7 +3625,7 @@ rt_visit_loadsymbol_op(
 	return true;
 }
 
-/* Visit an OP_STORESYMBOL instruction. */
+/* Visit an ROP_STORESYMBOL instruction. */
 static inline bool
 rt_visit_storesymbol_op(
 	struct rt_env *rt,
@@ -3671,7 +3697,7 @@ rt_visit_storesymbol_op(
 	return true;
 }
 
-/* Visit an OP_LOADDOT instruction. */
+/* Visit an ROP_LOADDOT instruction. */
 static inline bool
 rt_visit_loaddot_op(
 	struct rt_env *rt,
@@ -3683,7 +3709,7 @@ rt_visit_loaddot_op(
 	const char *field;
 	int len;
 
-	assert(func->bytecode[*pc] == OP_LOADDOT);
+	assert(func->bytecode[*pc] == ROP_LOADDOT);
 
 	if (*pc + 1 + 2 + 2 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -3720,7 +3746,7 @@ rt_visit_loaddot_op(
 	return true;
 }
 
-/* Visit an OP_STOREDOT instruction. */
+/* Visit an ROP_STOREDOT instruction. */
 static inline bool
 rt_visit_storedot_op(
 	struct rt_env *rt,
@@ -3732,7 +3758,7 @@ rt_visit_storedot_op(
 	const char *field;
 	int len;
 
-	assert(func->bytecode[*pc] == OP_STOREDOT);
+	assert(func->bytecode[*pc] == ROP_STOREDOT);
 
 	if (*pc + 1 + 2 + 2 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -3769,7 +3795,7 @@ rt_visit_storedot_op(
 	return true;
 }
 
-/* Visit an OP_CALL instruction. */
+/* Visit an ROP_CALL instruction. */
 static inline bool
 rt_visit_call_op(
 	struct rt_env *rt,
@@ -3785,7 +3811,7 @@ rt_visit_call_op(
 	int func_tmpvar;
 	int i;
 
-	assert(func->bytecode[*pc] == OP_CALL);
+	assert(func->bytecode[*pc] == ROP_CALL);
 
 	dst_tmpvar = (func->bytecode[*pc + 1] << 8) |
 		      func->bytecode[*pc + 2];
@@ -3829,7 +3855,7 @@ rt_visit_call_op(
 	return true;
 }
 
-/* Visit an OP_THISCALL instruction. */
+/* Visit an ROP_THISCALL instruction. */
 static inline bool
 rt_visit_thiscall_op(
 	struct rt_env *rt,
@@ -3847,7 +3873,7 @@ rt_visit_thiscall_op(
 	const char *name;
 	int len, i;
 
-	assert(func->bytecode[*pc] == OP_THISCALL);
+	assert(func->bytecode[*pc] == ROP_THISCALL);
 
 	if (*pc + 1 + 2 + 2 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -3906,7 +3932,7 @@ rt_visit_thiscall_op(
 	return true;
 }
 
-/* Visit an OP_JMP instruction. */
+/* Visit an ROP_JMP instruction. */
 static inline bool
 rt_visit_jmp_op(
 	struct rt_env *rt,
@@ -3915,7 +3941,7 @@ rt_visit_jmp_op(
 {
 	uint32_t target;
 
-	assert(func->bytecode[*pc] == OP_JMP);
+	assert(func->bytecode[*pc] == ROP_JMP);
 
 	if (*pc + 1 + 4 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -3936,7 +3962,7 @@ rt_visit_jmp_op(
 	return true;
 }
 
-/* Visit an OP_JMPIFTRUE instruction. */
+/* Visit an ROP_JMPIFTRUE instruction. */
 static inline bool
 rt_visit_jmpiftrue_op(
 	struct rt_env *rt,
@@ -3946,7 +3972,7 @@ rt_visit_jmpiftrue_op(
 	uint32_t target;
 	uint32_t src;
 
-	assert(func->bytecode[*pc] == OP_JMPIFTRUE);
+	assert(func->bytecode[*pc] == ROP_JMPIFTRUE);
 
 	if (*pc + 1 + 2 + 4 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -3982,7 +4008,7 @@ rt_visit_jmpiftrue_op(
 	return true;
 }
 
-/* Visit an OP_JMPIFFALSE instruction. */
+/* Visit an ROP_JMPIFFALSE instruction. */
 static inline bool
 rt_visit_jmpiffalse_op(
 	struct rt_env *rt,
@@ -3992,7 +4018,7 @@ rt_visit_jmpiffalse_op(
 	uint32_t target;
 	uint32_t src;
 
-	assert(func->bytecode[*pc] == OP_JMPIFFALSE);
+	assert(func->bytecode[*pc] == ROP_JMPIFFALSE);
 
 	if (*pc + 1 + 2 + 4 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -4028,7 +4054,7 @@ rt_visit_jmpiffalse_op(
 	return true;
 }
 
-/* Visit an OP_FILEINFO instruction. */
+/* Visit an ROP_FILEINFO instruction. */
 static inline bool
 rt_visit_fileinfo_op(
 	struct rt_env *rt,
@@ -4052,7 +4078,7 @@ rt_visit_fileinfo_op(
 	return true;
 }
 
-/* Visit an OP_LINEINFO instruction. */
+/* Visit an ROP_LINEINFO instruction. */
 static inline bool
 rt_visit_lineinfo_op(
 	struct rt_env *rt,
@@ -4061,7 +4087,7 @@ rt_visit_lineinfo_op(
 {
 	int line;
 
-	assert(func->bytecode[*pc] == OP_LINEINFO);
+	assert(func->bytecode[*pc] == ROP_LINEINFO);
 
 	line = (func->bytecode[*pc + 1] << 24) |
 	       (func->bytecode[*pc + 2] << 16) |
@@ -4083,155 +4109,155 @@ rt_visit_op(
 	int *pc)
 {
 	switch (func->bytecode[*pc]) {
-	case OP_NOP:
+	case ROP_NOP:
 		/* NOP */
 		(*pc)++;
 		break;
-	case OP_ASSIGN:
+	case ROP_ASSIGN:
 		if (!rt_visit_assign_op(rt, func, pc))
 			return false;
 		break;
-	case OP_ICONST:
+	case ROP_ICONST:
 		if (!rt_visit_iconst_op(rt, func, pc))
 			return false;
 		break;
-	case OP_FCONST:
+	case ROP_FCONST:
 		if (!rt_visit_fconst_op(rt, func, pc))
 			return false;
 		break;
-	case OP_SCONST:
+	case ROP_SCONST:
 		if (!rt_visit_sconst_op(rt, func, pc))
 			return false;
 		break;
-	case OP_ACONST:
+	case ROP_ACONST:
 		if (!rt_visit_aconst_op(rt, func, pc))
 			return false;
 		break;
-	case OP_DCONST:
+	case ROP_DCONST:
 		if (!rt_visit_dconst_op(rt, func, pc))
 			return false;
 		break;
-	case OP_INC:
+	case ROP_INC:
 		if (!rt_visit_inc_op(rt, func, pc))
 			return false;
 		break;
-	case OP_ADD:
+	case ROP_ADD:
 		if (!rt_visit_add_op(rt, func, pc))
 			return false;
 		break;
-	case OP_SUB:
+	case ROP_SUB:
 		if (!rt_visit_sub_op(rt, func, pc))
 			return false;
 		break;
-	case OP_MUL:
+	case ROP_MUL:
 		if (!rt_visit_mul_op(rt, func, pc))
 			return false;
 		break;
-	case OP_DIV:
+	case ROP_DIV:
 		if (!rt_visit_div_op(rt, func, pc))
 			return false;
 		break;
-	case OP_MOD:
+	case ROP_MOD:
 		if (!rt_visit_mod_op(rt, func, pc))
 			return false;
 		break;
-	case OP_AND:
+	case ROP_AND:
 		if (!rt_visit_and_op(rt, func, pc))
 			return false;
 		break;
-	case OP_OR:
+	case ROP_OR:
 		if (!rt_visit_or_op(rt, func, pc))
 			return false;
 		break;
-	case OP_XOR:
+	case ROP_XOR:
 		if (!rt_visit_xor_op(rt, func, pc))
 			return false;
 		break;
-	case OP_NEG:
+	case ROP_NEG:
 		if (!rt_visit_neg_op(rt, func, pc))
 			return false;
 		break;
-	case OP_LT:
+	case ROP_LT:
 		if (!rt_visit_lt_op(rt, func, pc))
 			return false;
 		break;
-	case OP_LTE:
+	case ROP_LTE:
 		if (!rt_visit_lte_op(rt, func, pc))
 			return false;
 		break;
-	case OP_GT:
+	case ROP_GT:
 		if (!rt_visit_gt_op(rt, func, pc))
 			return false;
 		break;
-	case OP_GTE:
+	case ROP_GTE:
 		if (!rt_visit_gte_op(rt, func, pc))
 			return false;
 		break;
-	case OP_EQ:
+	case ROP_EQ:
 		if (!rt_visit_eq_op(rt, func, pc))
 			return false;
 		break;
-	case OP_NEQ:
+	case ROP_NEQ:
 		if (!rt_visit_neq_op(rt, func, pc))
 			return false;
 		break;
-	case OP_STOREARRAY:
+	case ROP_STOREARRAY:
 		if (!rt_visit_storearray_op(rt, func, pc))
 			return false;
 		break;
-	case OP_LOADARRAY:
+	case ROP_LOADARRAY:
 		if (!rt_visit_loadarray_op(rt, func, pc))
 			return false;
 		break;
-	case OP_LEN:
+	case ROP_LEN:
 		if (!rt_visit_len_op(rt, func, pc))
 			return false;
 		break;
-	case OP_GETDICTKEYBYINDEX:
+	case ROP_GETDICTKEYBYINDEX:
 		if (!rt_visit_getdictkeybyindex_op(rt, func, pc))
 			return false;
 		break;
-	case OP_GETDICTVALBYINDEX:
+	case ROP_GETDICTVALBYINDEX:
 		if (!rt_visit_getdictvalbyindex_op(rt, func, pc))
 			return false;
 		break;
-	case OP_LOADSYMBOL:
+	case ROP_LOADSYMBOL:
 		if (!rt_visit_loadsymbol_op(rt, func, pc))
 			return false;
 		break;
-	case OP_STORESYMBOL:
+	case ROP_STORESYMBOL:
 		if (!rt_visit_storesymbol_op(rt, func, pc))
 			return false;
 		break;
-	case OP_LOADDOT:
+	case ROP_LOADDOT:
 		if (!rt_visit_loaddot_op(rt, func, pc))
 			return false;
 		break;
-	case OP_STOREDOT:
+	case ROP_STOREDOT:
 		if (!rt_visit_storedot_op(rt, func, pc))
 			return false;
 		break;
-	case OP_CALL:
+	case ROP_CALL:
 		if (!rt_visit_call_op(rt, func, pc))
 			return false;
 		break;
-	case OP_THISCALL:
+	case ROP_THISCALL:
 		if (!rt_visit_thiscall_op(rt, func, pc))
 			return false;
 		break;
-	case OP_JMP:
+	case ROP_JMP:
 		if (!rt_visit_jmp_op(rt, func, pc))
 			return false;
 		break;
-	case OP_JMPIFTRUE:
+	case ROP_JMPIFTRUE:
 		if (!rt_visit_jmpiftrue_op(rt, func, pc))
 			return false;
 		break;
-	case OP_JMPIFFALSE:
+	case ROP_JMPIFFALSE:
 		if (!rt_visit_jmpiffalse_op(rt, func, pc))
 			return false;
 		break;
-	case OP_LINEINFO:
+	case ROP_LINEINFO:
 		if (!rt_visit_lineinfo_op(rt, func, pc))
 			return false;
 		break;

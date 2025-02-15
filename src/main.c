@@ -7,21 +7,25 @@
 /* Scripting runtime. */
 struct rt_env *rt;
 
-/* Is Control-C pressed?*/
+/* Renderer name. */
+struct rt_func *renderer;
+
+/* Is ctrl-c pressed? */
 volatile bool is_stopped;
 
 /* Temporary file content storage. */
 char file_text[65536];
 
 /* Forward declaration. */
-void sigint_handler(int signal);
-bool load_engine_object(struct rt_env *rt);
-bool load_main_script(struct rt_env *rt);
-bool load_file(const char *file_name);
-bool call_init(struct rt_env *rt);
-bool call_frame(struct rt_env *rt);
-void print_error(struct rt_env *rt);
-bool engine_print(struct rt_env *rt);
+static void sigint_handler(int signal);
+static bool load_engine_object(struct rt_env *rt);
+static bool load_main_script(struct rt_env *rt);
+static bool load_file(const char *file_name);
+static bool call_main(struct rt_env *rt);
+static bool get_renderer(struct rt_env *rt);
+static bool call_renderer(struct rt_env *rt);
+static void print_error(struct rt_env *rt);
+static bool engine_print(struct rt_env *rt);
 
 int main(int argc, char *argv[])
 {
@@ -43,26 +47,28 @@ int main(int argc, char *argv[])
 	if (!load_main_script(rt))
 		return false;
 
-	/* Call OnInit(). */
-	if (!call_init(rt))
+	/* Call main(). */
+	if (!call_main(rt))
+		return false;
+
+	/* Get a renderer function name. */
+	if (!get_renderer(rt))
 		return false;
 
 	/* Call OnFrame() until Control-C is pressed. */
-//	while (!is_stopped) {
-		if (!call_frame(rt))
-			return false;
-//	}
+	if (!call_renderer(rt))
+		return false;
 
 	/* Cleanup the scripting runtime. */
 	rt_destroy(rt);
 }
 
-void sigint_handler(int signal)
+static void sigint_handler(int sig)
 {
 	is_stopped = true;
 }
 
-bool load_engine_object(struct rt_env *rt)
+static bool load_engine_object(struct rt_env *rt)
 {
 	struct rt_value engine;
 	int i;
@@ -102,7 +108,7 @@ bool load_engine_object(struct rt_env *rt)
 	return true;
 }
 
-bool load_main_script(struct rt_env *rt)
+static bool load_main_script(struct rt_env *rt)
 {
 	if (!load_file("main.ls"))
 		return false;
@@ -116,7 +122,7 @@ bool load_main_script(struct rt_env *rt)
 	return true;
 }
 
-bool load_file(const char *file_name)
+static bool load_file(const char *file_name)
 {
 	FILE *fp;
 	size_t len;
@@ -141,25 +147,11 @@ bool load_file(const char *file_name)
 	return true;
 }
 
-bool call_init(struct rt_env *rt)
+static bool call_main(struct rt_env *rt)
 {
 	struct rt_value ret;
 
-	if (!rt_call_with_name(rt, "onInit", 0, NULL, &ret)) {
-		print_error(rt);
-		return false;;
-	}
-
-	rt_shallow_gc(rt);
-
-	return true;
-}
-
-bool call_frame(struct rt_env *rt)
-{
-	struct rt_value ret;
-
-	if (!rt_call_with_name(rt, "onFrame", 0, NULL, &ret)) {
+	if (!rt_call_with_name(rt, "main", NULL, 0, NULL, &ret)) {
 		print_error(rt);
 		return false;
 	}
@@ -169,7 +161,39 @@ bool call_frame(struct rt_env *rt)
 	return true;
 }
 
-void print_error(struct rt_env *rt)
+static bool get_renderer(struct rt_env *rt)
+{
+	struct rt_value dict, elem;
+
+	if (!rt_get_global(rt, "Engine", &dict))
+		return false;
+
+	if (!rt_get_dict_elem(rt, &dict, "renderer", &elem)) {
+		printf("Engine.renderer not defined.\n");
+		return false;
+	}
+
+	if (!rt_get_func(rt, &elem, &renderer))
+		return false;
+
+	return true;
+}
+
+static bool call_renderer(struct rt_env *rt)
+{
+	struct rt_value ret;
+
+	if (!rt_call(rt, renderer, NULL, 0, NULL, &ret)) {
+		print_error(rt);
+		return false;
+	}
+
+	rt_shallow_gc(rt);
+
+	return true;
+}
+
+static void print_error(struct rt_env *rt)
 {
 	printf("%s:%d: error: %s\n",
 	       rt_get_error_file(rt),
@@ -177,7 +201,7 @@ void print_error(struct rt_env *rt)
 	       rt_get_error_message(rt));
 }
 
-bool engine_print(struct rt_env *rt)
+static bool engine_print(struct rt_env *rt)
 {
 	struct rt_value msg;
 	const char *s;

@@ -19,6 +19,47 @@
 struct lir_func;
 struct rt_env;
 
+enum rt_bytecode {
+	ROP_NOP,		/* 0x00: nop */
+	ROP_ASSIGN,		/* 0x01: dst = src */
+	ROP_ICONST,		/* 0x02: dst = integer constant */
+	ROP_FCONST,		/* 0x03: dst = floating-point constant */
+	ROP_SCONST,		/* 0x04: dst = string constant */
+	ROP_ACONST,		/* 0x05: dst = empty array */
+	ROP_DCONST,		/* 0x06: dst = empty dictionary */
+	ROP_INC,		/* 0x07: dst = src + 1 */
+	ROP_NEG,		/* 0x08: dst = ~src */
+	ROP_ADD,		/* 0x09: dst = src1 + src2 */
+	ROP_SUB,		/* 0x0a: dst = src1 - src2 */
+	ROP_MUL,		/* 0x0b: dst = src1 * src2 */
+	ROP_DIV,		/* 0x0c: dst = src1 / src2 */
+	ROP_MOD,		/* 0x0d: dst = src1 % src2 */
+	ROP_AND,		/* 0x0e: dst = src1 & src2 */
+	ROP_OR,			/* 0x0f: dst = src1 | src2 */
+	ROP_XOR,		/* 0x10: dst = src1 ^ src2 */
+	ROP_LT,			/* 0x11: dst = src1 <  src2 [0 or 1] */
+	ROP_LTE,		/* 0x12: dst = src1 <= src2 [0 or 1] */
+	ROP_GT,			/* 0x13: dst = src1 >  src2 [0 or 1] */
+	ROP_GTE,		/* 0x14: dst = src1 >= src2 [0 or 1] */
+	ROP_EQ,			/* 0x15: dst = src1 == src2 [0 or 1] */
+	ROP_NEQ,		/* 0x16: dst = src1 != src2 [0 or 1] */
+	ROP_LOADARRAY,		/* 0x17: dst = src1[src2] */
+	ROP_STOREARRAY,		/* 0x18: opr1[opr2] = op3 */
+	ROP_LEN,		/* 0x19: dst = len(src) */
+	ROP_GETDICTKEYBYINDEX,	/* 0x1a: dst = src1.keyAt(src2) */
+	ROP_GETDICTVALBYINDEX,	/* 0x1b: dst = src1.valAt(src2) */
+	ROP_STOREDOT,		/* 0x1c: obj.access = src */
+	ROP_LOADDOT,		/* 0x1d: dst = obj.access */
+	ROP_STORESYMBOL,	/* 0x1e: setSymbol(dst, src) */
+	ROP_LOADSYMBOL,		/* 0x1f: dst = getSymbol(src) */
+	ROP_CALL,		/* 0x20: func(arg1, ...) */
+	ROP_THISCALL,		/* 0x21: obj->func(arg1, ...) */
+	ROP_JMP,		/* 0x22: PC = src */
+	ROP_JMPIFTRUE,		/* 0x23: PC = src1 if src2 == 1 */
+	ROP_JMPIFFALSE,		/* 0x24: PC = src1 if src2 != 1 */
+	ROP_LINEINFO,		/* 0x25: setDebugLine(src) */
+};
+
 enum rt_value_type {
 	RT_VALUE_INT,
 	RT_VALUE_FLOAT,
@@ -261,20 +302,21 @@ rt_register_cfunc_under(
  * Function Call
  */
 
+/* Call a function. */
+bool
+rt_call(
+	struct rt_env *rt,
+	struct rt_func *func,
+	struct rt_value *thisptr,
+	int arg_count,
+	struct rt_value *arg,
+	struct rt_value *ret);
+
 /* Call a function with a name. */
 bool
 rt_call_with_name(
 	struct rt_env *rt,
 	const char *func_name,
-	int arg_count,
-	struct rt_value *arg,
-	struct rt_value *ret);
-
-/* Call a function object. */
-bool
-rt_call(
-	struct rt_env *rt,
-	struct rt_func *func,
 	struct rt_value *thisptr,
 	int arg_count,
 	struct rt_value *arg,
@@ -361,6 +403,13 @@ rt_get_string(
 	struct rt_env *rt,
 	struct rt_value *val,
 	const char **ret);
+
+/* Get a function value. */
+bool
+rt_get_func(
+	struct rt_env *rt,
+	struct rt_value *val,
+	struct rt_func **ret);
 
 /* Get an array size. */
 bool

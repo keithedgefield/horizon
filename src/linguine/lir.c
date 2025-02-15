@@ -11,7 +11,6 @@
 
 #include "lir.h"
 #include "hir.h"
-#include "bytecode.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -244,7 +243,7 @@ lir_visit_basic_block(
 	block->addr = bytecode_top;
 
 	/* Put a line number. */
-	if (!lir_put_opcode(OP_LINEINFO))
+	if (!lir_put_opcode(LOP_LINEINFO))
 		return false;
 	if (!lir_put_imm32(block->line))
 		return false;
@@ -276,7 +275,7 @@ lir_visit_if_block(
 	block->addr = bytecode_top;
 
 	/* Put a line number. */
-	if (!lir_put_opcode(OP_LINEINFO))
+	if (!lir_put_opcode(LOP_LINEINFO))
 		return false;
 	if (!lir_put_imm32(block->line))
 		return false;
@@ -294,7 +293,7 @@ lir_visit_if_block(
 			return false;
 		if (!lir_visit_expr(cond_tmpvar, block->val.if_.cond))
 			return false;
-		if (!lir_put_opcode(OP_JMPIFFALSE))
+		if (!lir_put_opcode(LOP_JMPIFFALSE))
 			return false;
 		if (!lir_put_tmpvar(cond_tmpvar))
 			return false;
@@ -325,7 +324,7 @@ lir_visit_if_block(
 	/* If this is an if-block or an else-if block. */
 	if (!is_else) {
 		/* Jump to a first non-if block. */
-		if (!lir_put_opcode(OP_JMP))
+		if (!lir_put_opcode(LOP_JMP))
 			return false;
 		if (!lir_put_branch_addr(block->succ))
 			return false;
@@ -381,7 +380,7 @@ lir_visit_for_range_block(
 	block->addr = bytecode_top;
 
 	/* Put a line number. */
-	if (!lir_put_opcode(OP_LINEINFO))
+	if (!lir_put_opcode(LOP_LINEINFO))
 		return false;
 	if (!lir_put_imm32(block->line))
 		return false;
@@ -401,7 +400,7 @@ lir_visit_for_range_block(
 	/* Put the start value to a loop variable. */
 	if (!lir_increment_tmpvar(&loop_tmpvar))
 		return false;
-	if (!lir_put_opcode(OP_ASSIGN))
+	if (!lir_put_opcode(LOP_ASSIGN))
 		return false;
 	if (!lir_put_tmpvar(loop_tmpvar))
 		return false;
@@ -412,7 +411,7 @@ lir_visit_for_range_block(
 	loop_addr = bytecode_top;
 	if (!lir_increment_tmpvar(&cmp_tmpvar))
 		return false;
-	if (!lir_put_opcode(OP_EQ))
+	if (!lir_put_opcode(LOP_EQ))
 		return false;
 	if (!lir_put_tmpvar(cmp_tmpvar))
 		return false;
@@ -420,7 +419,7 @@ lir_visit_for_range_block(
 		return false;
 	if (!lir_put_tmpvar(stop_tmpvar))
 		return false;
-	if (!lir_put_opcode(OP_JMPIFTRUE))
+	if (!lir_put_opcode(LOP_JMPIFTRUE))
 		return false;
 	if (!lir_put_tmpvar(cmp_tmpvar))
 		return false;
@@ -429,7 +428,7 @@ lir_visit_for_range_block(
 	lir_decrement_tmpvar(cmp_tmpvar);
 
 	/* Store a loop variable. */
-	if (!lir_put_opcode(OP_STORESYMBOL))
+	if (!lir_put_opcode(LOP_STORESYMBOL))
 		return false;
 	if (!lir_put_string(block->val.for_.counter_symbol))
 		return false;
@@ -443,13 +442,13 @@ lir_visit_for_range_block(
 	}
 
 	/* Increment the loop variable. */
-	if (!lir_put_opcode(OP_INC))
+	if (!lir_put_opcode(LOP_INC))
 		return false;
 	if (!lir_put_tmpvar(loop_tmpvar))
 		return false;
 
 	/* Put a back-edge jump. */
-	if (!lir_put_opcode(OP_JMP))
+	if (!lir_put_opcode(LOP_JMP))
 		return false;
 	if (!lir_put_imm32(loop_addr))
 		return false;
@@ -481,7 +480,7 @@ lir_visit_for_kv_block(
 	block->addr = bytecode_top;
 
 	/* Put a line number. */
-	if (!lir_put_opcode(OP_LINEINFO))
+	if (!lir_put_opcode(LOP_LINEINFO))
 		return false;
 	if (!lir_put_imm32(block->line))
 		return false;
@@ -495,7 +494,7 @@ lir_visit_for_kv_block(
 	/* Get a collection size. */
 	if (!lir_increment_tmpvar(&size_tmpvar))
 		return false;
-	if (!lir_put_opcode(OP_LEN))
+	if (!lir_put_opcode(LOP_LEN))
 		return false;
 	if (!lir_put_tmpvar(size_tmpvar))
 		return false;
@@ -505,7 +504,7 @@ lir_visit_for_kv_block(
 	/* Assign 0 to `i`. */
 	if (!lir_increment_tmpvar(&i_tmpvar))
 		return false;
-	if (!lir_put_opcode(OP_ICONST))
+	if (!lir_put_opcode(LOP_ICONST))
 		return false;
 	if (!lir_put_tmpvar(i_tmpvar))
 		return false;
@@ -522,7 +521,7 @@ lir_visit_for_kv_block(
 
 	/* Put a loop header. */
 	loop_addr = bytecode_top;		/* LOOP: */
-	if (!lir_put_opcode(OP_GTE)) 		/*  if i >= size then break */
+	if (!lir_put_opcode(LOP_GTE)) 		/*  if i >= size then break */
 		return false;
 	if (!lir_put_tmpvar(cmp_tmpvar))
 		return false;
@@ -530,13 +529,13 @@ lir_visit_for_kv_block(
 		return false;
 	if (!lir_put_tmpvar(size_tmpvar))
 		return false;
-	if (!lir_put_opcode(OP_JMPIFTRUE)) 		/*  if i >= size then break */
+	if (!lir_put_opcode(LOP_JMPIFTRUE)) 		/*  if i >= size then break */
 		return false;
 	if (!lir_put_tmpvar(cmp_tmpvar))
 		return false;
 	if (!lir_put_branch_addr(block->succ))
 		return false;
-	if (!lir_put_opcode(OP_GETDICTKEYBYINDEX))	/* key = dict.getKeyByIndex(i) */
+	if (!lir_put_opcode(LOP_GETDICTKEYBYINDEX))	/* key = dict.getKeyByIndex(i) */
 		return false;
 	if (!lir_put_tmpvar(key_tmpvar))
 		return false;
@@ -544,7 +543,7 @@ lir_visit_for_kv_block(
 		return false;
 	if (!lir_put_tmpvar(i_tmpvar))
 		return false;
-	if (!lir_put_opcode(OP_GETDICTVALBYINDEX)) 	/* val = dict.getValByIndex(i) */
+	if (!lir_put_opcode(LOP_GETDICTVALBYINDEX)) 	/* val = dict.getValByIndex(i) */
 		return false;
 	if (!lir_put_tmpvar(val_tmpvar))
 		return false;
@@ -552,19 +551,19 @@ lir_visit_for_kv_block(
 		return false;
 	if (!lir_put_tmpvar(i_tmpvar))
 		return false;
-	if (!lir_put_opcode(OP_INC)) 		/* i++ */
+	if (!lir_put_opcode(LOP_INC)) 		/* i++ */
 		return false;
 	if (!lir_put_tmpvar(i_tmpvar))
 		return false;
 
 	/* Bind the key and value variables to local variables. */
-	if (!lir_put_opcode(OP_STORESYMBOL))
+	if (!lir_put_opcode(LOP_STORESYMBOL))
 		return false;
 	if (!lir_put_string(block->val.for_.key_symbol))
 		return false;
 	if (!lir_put_tmpvar(key_tmpvar))
 		return false;
-	if (!lir_put_opcode(OP_STORESYMBOL))
+	if (!lir_put_opcode(LOP_STORESYMBOL))
 		return false;
 	if (!lir_put_string(block->val.for_.value_symbol))
 		return false;
@@ -578,7 +577,7 @@ lir_visit_for_kv_block(
 	}
 
 	/* Put a back-edge jump. */
-	if (!lir_put_opcode(OP_JMP))
+	if (!lir_put_opcode(LOP_JMP))
 		return false;
 	if (!lir_put_imm32(loop_addr))
 		return false;
@@ -612,7 +611,7 @@ lir_visit_for_v_block(
 	block->addr = bytecode_top;
 
 	/* Put a line number. */
-	if (!lir_put_opcode(OP_LINEINFO))
+	if (!lir_put_opcode(LOP_LINEINFO))
 		return false;
 	if (!lir_put_imm32(block->line))
 		return false;
@@ -626,7 +625,7 @@ lir_visit_for_v_block(
 	/* Get a collection size. */
 	if (!lir_increment_tmpvar(&size_tmpvar))
 		return false;
-	if (!lir_put_opcode(OP_LEN))
+	if (!lir_put_opcode(LOP_LEN))
 		return false;
 	if (!lir_put_tmpvar(size_tmpvar))
 		return false;
@@ -636,7 +635,7 @@ lir_visit_for_v_block(
 	/* Assign 0 to `i`. */
 	if (!lir_increment_tmpvar(&i_tmpvar))
 		return false;
-	if (!lir_put_opcode(OP_ICONST))
+	if (!lir_put_opcode(LOP_ICONST))
 		return false;
 	if (!lir_put_tmpvar(i_tmpvar))
 		return false;
@@ -651,7 +650,7 @@ lir_visit_for_v_block(
 
 	/* Put a loop header. */
 	loop_addr = bytecode_top;		/* LOOP: */
-	if (!lir_put_opcode(OP_GTE)) 		/*  if i >= size then break */
+	if (!lir_put_opcode(LOP_GTE)) 		/*  if i >= size then break */
 		return false;
 	if (!lir_put_tmpvar(cmp_tmpvar))
 		return false;
@@ -659,13 +658,13 @@ lir_visit_for_v_block(
 		return false;
 	if (!lir_put_tmpvar(size_tmpvar))
 		return false;
-	if (!lir_put_opcode(OP_JMPIFTRUE))
+	if (!lir_put_opcode(LOP_JMPIFTRUE))
 		return false;
 	if (!lir_put_tmpvar(cmp_tmpvar))
 		return false;
 	if (!lir_put_branch_addr(block->succ))
 		return false;
-	if (!lir_put_opcode(OP_LOADARRAY)) 	/* val = array[i] */
+	if (!lir_put_opcode(LOP_LOADARRAY)) 	/* val = array[i] */
 		return false;
 	if (!lir_put_tmpvar(val_tmpvar))
 		return false;
@@ -673,13 +672,13 @@ lir_visit_for_v_block(
 		return false;
 	if (!lir_put_tmpvar(i_tmpvar))
 		return false;
-	if (!lir_put_opcode(OP_INC)) 		/* i++ */
+	if (!lir_put_opcode(LOP_INC)) 		/* i++ */
 		return false;
 	if (!lir_put_tmpvar(i_tmpvar))
 		return false;
 
 	/* Bind the value variable to a local variable. */
-	if (!lir_put_opcode(OP_STORESYMBOL))
+	if (!lir_put_opcode(LOP_STORESYMBOL))
 		return false;
 	if (!lir_put_string(block->val.for_.value_symbol))
 		return false;
@@ -693,7 +692,7 @@ lir_visit_for_v_block(
 	}
 
 	/* Put a back-edge jump. */
-	if (!lir_put_opcode(OP_JMP))
+	if (!lir_put_opcode(LOP_JMP))
 		return false;
 	if (!lir_put_imm32(loop_addr))
 		return false;
@@ -721,7 +720,7 @@ lir_visit_while_block(
 	block->addr = bytecode_top;
 
 	/* Put a line number. */
-	if (!lir_put_opcode(OP_LINEINFO))
+	if (!lir_put_opcode(LOP_LINEINFO))
 		return false;
 	if (!lir_put_imm32(block->line))
 		return false;
@@ -732,7 +731,7 @@ lir_visit_while_block(
 		return false;
 	if (!lir_visit_expr(cmp_tmpvar, block->val.while_.cond))
 		return false;
-	if (!lir_put_opcode(OP_JMPIFFALSE))
+	if (!lir_put_opcode(LOP_JMPIFFALSE))
 		return false;
 	if (!lir_put_tmpvar(cmp_tmpvar))
 		return false;
@@ -747,7 +746,7 @@ lir_visit_while_block(
 	}
 
 	/* Put a back-edge jump. */
-	if (!lir_put_opcode(OP_JMP))
+	if (!lir_put_opcode(LOP_JMP))
 		return false;
 	if (!lir_put_imm32(loop_addr))
 		return false;
@@ -765,7 +764,7 @@ lir_visit_stmt(
 	assert(stmt->rhs != NULL);
 
 	/* Put a line number. */
-	if (!lir_put_opcode(OP_LINEINFO))
+	if (!lir_put_opcode(LOP_LINEINFO))
 		return false;
 	if (!lir_put_imm32(stmt->line))
 		return false;
@@ -782,7 +781,7 @@ lir_visit_stmt(
 			assert(stmt->lhs->val.term.term->type == HIR_TERM_SYMBOL);
 
 			/* Put a storesymbol. */
-			if (!lir_put_opcode(OP_STORESYMBOL))
+			if (!lir_put_opcode(LOP_STORESYMBOL))
 				return false;
 			if (!lir_put_string(stmt->lhs->val.term.term->val.symbol))
 				return false;
@@ -805,7 +804,7 @@ lir_visit_stmt(
 				return false;
 
 			/* Put a store. */
-			if (!lir_put_opcode(OP_STOREARRAY))
+			if (!lir_put_opcode(LOP_STOREARRAY))
 				return false;
 			if (!lir_put_tmpvar(obj_tmpvar))
 				return false;
@@ -827,7 +826,7 @@ lir_visit_stmt(
 				return false;
 
 			/* Put a store. */
-			if (!lir_put_opcode(OP_STOREDOT))
+			if (!lir_put_opcode(LOP_STOREDOT))
 				return false;
 			if (!lir_put_tmpvar(obj_tmpvar))
 				return false;
@@ -939,7 +938,7 @@ lir_visit_unary_expr(
 	/* Put an opcode. */
 	switch (expr->type) {
 	case HIR_EXPR_NEG:
-		if (!lir_put_opcode(OP_NEG))
+		if (!lir_put_opcode(LOP_NEG))
 			return false;
 		if (!lir_put_tmpvar(dst_tmpvar))
 			return false;
@@ -981,46 +980,46 @@ lir_visit_binary_expr(
 	/* Put an opcode. */
 	switch (expr->type) {
 	case HIR_EXPR_LT:
-		opcode = OP_LT;
+		opcode = LOP_LT;
 		break;
 	case HIR_EXPR_LTE:
-		opcode = OP_LTE;
+		opcode = LOP_LTE;
 		break;
 	case HIR_EXPR_EQ:
-		opcode = OP_EQ;
+		opcode = LOP_EQ;
 		break;
 	case HIR_EXPR_NEQ:
-		opcode = OP_NEQ;
+		opcode = LOP_NEQ;
 		break;
 	case HIR_EXPR_GTE:
-		opcode = OP_GTE;
+		opcode = LOP_GTE;
 		break;
 	case HIR_EXPR_GT:
-		opcode = OP_GT;
+		opcode = LOP_GT;
 		break;
 	case HIR_EXPR_PLUS:
-		opcode = OP_ADD;
+		opcode = LOP_ADD;
 		break;
 	case HIR_EXPR_MINUS:
-		opcode = OP_SUB;
+		opcode = LOP_SUB;
 		break;
 	case HIR_EXPR_MUL:
-		opcode = OP_MUL;
+		opcode = LOP_MUL;
 		break;
 	case HIR_EXPR_DIV:
-		opcode = OP_DIV;
+		opcode = LOP_DIV;
 		break;
 	case HIR_EXPR_MOD:
-		opcode = OP_MOD;
+		opcode = LOP_MOD;
 		break;
 	case HIR_EXPR_AND:
-		opcode = OP_AND;
+		opcode = LOP_AND;
 		break;
 	case HIR_EXPR_OR:
-		opcode = OP_OR;
+		opcode = LOP_OR;
 		break;
 	case HIR_EXPR_SUBSCR:
-		opcode = OP_LOADARRAY;
+		opcode = LOP_LOADARRAY;
 		break;
 	default:
 		assert(NEVER_COME_HERE);
@@ -1061,7 +1060,7 @@ lir_visit_dot_expr(
 		return false;
 
 	/* Put a bytecode sequence. */
-	if (!lir_put_opcode(OP_LOADDOT))
+	if (!lir_put_opcode(LOP_LOADDOT))
 		return false;
 	if (!lir_put_tmpvar(dst_tmpvar))
 		return false;
@@ -1108,7 +1107,7 @@ lir_visit_call_expr(
 	}
 
 	/* Put a bytecode sequence. */
-	if (!lir_put_opcode(OP_CALL))
+	if (!lir_put_opcode(LOP_CALL))
 		return false;
 	if (!lir_put_tmpvar(dst_tmpvar))
 		return false;
@@ -1161,7 +1160,7 @@ lir_visit_thiscall_expr(
 	}
 
 	/* Put a bytecode sequence. */
-	if (!lir_put_opcode(OP_THISCALL))
+	if (!lir_put_opcode(LOP_THISCALL))
 		return false;
 	if (!lir_put_tmpvar(dst_tmpvar))
 		return false;
@@ -1202,7 +1201,7 @@ lir_visit_array_expr(
 	elem_count = expr->val.array.elem_count;
 	
 	/* Create an array. */
-	if (!lir_put_opcode(OP_ACONST))
+	if (!lir_put_opcode(LOP_ACONST))
 		return false;
 	if (!lir_put_tmpvar(dst_tmpvar))
 		return false;
@@ -1218,13 +1217,13 @@ lir_visit_array_expr(
 			return false;
 
 		/* Add to the array. */
-		if (!lir_put_opcode(OP_ICONST))
+		if (!lir_put_opcode(LOP_ICONST))
 			return false;
 		if (!lir_put_tmpvar(index_tmpvar))
 			return false;
 		if (!lir_put_imm32(i))
 			return false;
-		if (!lir_put_opcode(OP_STOREARRAY))
+		if (!lir_put_opcode(LOP_STOREARRAY))
 			return false;
 		if (!lir_put_tmpvar(dst_tmpvar))
 			return false;
@@ -1288,7 +1287,7 @@ lir_visit_symbol_term(
 	assert(term != NULL);
 	assert(term->type == HIR_TERM_SYMBOL);
 
-	if (!lir_put_opcode(OP_LOADSYMBOL))
+	if (!lir_put_opcode(LOP_LOADSYMBOL))
 		return false;
 	if (!lir_put_tmpvar(dst_tmpvar))
 		return false;
@@ -1306,7 +1305,7 @@ lir_visit_int_term(
 	assert(term != NULL);
 	assert(term->type == HIR_TERM_INT);
 
-	if (!lir_put_opcode(OP_ICONST))
+	if (!lir_put_opcode(LOP_ICONST))
 		return false;
 	if (!lir_put_tmpvar(dst_tmpvar))
 		return false;
@@ -1328,7 +1327,7 @@ lir_visit_float_term(
 
 	data = *(uint32_t *)&term->val.f;
 
-	if (!lir_put_opcode(OP_FCONST))
+	if (!lir_put_opcode(LOP_FCONST))
 		return false;
 	if (!lir_put_tmpvar(dst_tmpvar))
 		return false;
@@ -1346,7 +1345,7 @@ lir_visit_string_term(
 	assert(term != NULL);
 	assert(term->type == HIR_TERM_STRING);
 
-	if (!lir_put_opcode(OP_SCONST))
+	if (!lir_put_opcode(LOP_SCONST))
 		return false;
 	if (!lir_put_tmpvar(dst_tmpvar))
 		return false;
@@ -1364,7 +1363,7 @@ lir_visit_empty_array_term(
 	assert(term != NULL);
 	assert(term->type == HIR_TERM_EMPTY_ARRAY);
 
-	if (!lir_put_opcode(OP_ACONST))
+	if (!lir_put_opcode(LOP_ACONST))
 		return false;
 	if (!lir_put_tmpvar(dst_tmpvar))
 		return false;
@@ -1380,7 +1379,7 @@ lir_visit_empty_dict_term(
 	assert(term != NULL);
 	assert(term->type == HIR_TERM_EMPTY_DICT);
 
-	if (!lir_put_opcode(OP_DCONST))
+	if (!lir_put_opcode(LOP_DCONST))
 		return false;
 	if (!lir_put_tmpvar(dst_tmpvar))
 		return false;
