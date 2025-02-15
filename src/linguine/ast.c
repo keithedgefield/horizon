@@ -937,6 +937,25 @@ ast_accept_thiscall_expr(
 	return expr;
 }
 
+/* Called from the parser when it accepted a expr with a array literal syntax. */
+struct ast_expr *
+ast_accept_array_expr(
+	struct ast_arg_list *elem_list)
+{
+	struct ast_expr *expr;
+
+	expr = malloc(sizeof(struct ast_expr));
+	if (expr == NULL) {
+		ast_out_of_memory();
+		return NULL;
+	}
+	memset(expr, 0, sizeof(struct ast_expr));
+	expr->type = AST_EXPR_ARRAY;
+	expr->val.array.elem_list = elem_list;
+
+	return expr;
+}
+
 /* Called from the parser when it accepted a term with an integer. */
 struct ast_term *
 ast_accept_int_term(

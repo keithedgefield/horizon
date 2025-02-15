@@ -46,6 +46,7 @@ enum hir_expr_type {
 	HIR_EXPR_DOT,
 	HIR_EXPR_CALL,
 	HIR_EXPR_THISCALL,
+	HIR_EXPR_ARRAY,
 };
 
 /* HIR Term Type */
@@ -59,7 +60,10 @@ enum hir_term_type {
 };
 
 /* Maximum Parameters and Arguments Size */
-#define HIR_PARAM_SIZE	32
+#define HIR_PARAM_SIZE		32
+
+/* Maximum Elements of Array Literal */
+#define HIR_ARRAY_LITERAL_SIZE	32
 
 /* Forward Declaration */
 struct hir_cfg_node;
@@ -226,6 +230,15 @@ struct hir_expr {
 			int arg_count;
 			struct hir_expr *arg[HIR_PARAM_SIZE];
 		} thiscall;
+
+		/* Array Literal Expression */
+		struct {
+			/* Element count. */
+			int elem_count;
+
+			/* Element expressions. */
+			struct hir_expr *elem[HIR_ARRAY_LITERAL_SIZE];
+		} array;
 	} val;
 };
 

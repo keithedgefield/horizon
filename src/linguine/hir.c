@@ -47,6 +47,7 @@ struct hir_block *hir_func_tbl[HIR_FUNC_MAX];
 
 /* Error position and message. */
 static int hir_error_line;
+static int hir_error_col;
 static char hir_error_message[65536];
 
 /*
@@ -75,13 +76,14 @@ static bool hir_visit_unary_expr(struct hir_expr **hexpr, struct ast_expr *aexpr
 static bool hir_visit_dot_expr(struct hir_expr **hexpr, struct ast_expr *aexpr);
 static bool hir_visit_call_expr(struct hir_expr **hexpr, struct ast_expr *aexpr);
 static bool hir_visit_thiscall_expr(struct hir_expr **hexpr, struct ast_expr *aexpr);
+static bool hir_visit_array_expr(struct hir_expr **hexpr, struct ast_expr *aexpr);
 static bool hir_visit_term(struct hir_term **hterm, struct ast_term *aterm);
 static bool hir_visit_param_list(struct hir_block *hfunc,struct ast_func *afunc);
 static void hir_free_block(struct hir_block *b);
 static void hir_free_stmt(struct hir_stmt *s);
 static void hir_free_expr(struct hir_expr *e);
 static void hir_free_term(struct hir_term *t);
-static void hir_fatal(int line, int col, const char *msg);
+static void hir_fatal(int line, const char *msg);
 static void hir_out_of_memory(void);
 
 /*
@@ -109,7 +111,7 @@ hir_build(void)
 	while (func != NULL) {
 		/* Check maximum functions. */
 		if (hir_func_count >= HIR_FUNC_MAX) {
-			hir_fatal(0, 0, "Too many functions.");
+			hir_fatal(0, "Too many functions.");
 			return false;
 		}
 
@@ -331,9 +333,7 @@ hir_visit_stmt_list(
 				p_search = p_search->parent;
 			}
 			if (p_search == NULL) {
-				hir_fatal(cur_astmt->line,
-					  cur_astmt->column,
-					  "continue appeared outside loop.");
+				hir_fatal(cur_astmt->line, "continue appeared outside loop.");
 				return false;
 			}
 
@@ -356,9 +356,7 @@ hir_visit_stmt_list(
 				p_search = p_search->parent;
 			}
 			if (p_search == NULL) {
-				hir_fatal(cur_astmt->line,
-					  cur_astmt->column,
-					  "continue appeared outside loop.");
+				hir_fatal(cur_astmt->line, "continue appeared outside loop.");
 				return false;
 			}
 
@@ -443,6 +441,8 @@ hir_visit_stmt(
 	assert(prev_block != NULL);
 	assert(parent_block != NULL);
 	assert(cur_astmt != NULL);
+
+	hir_error_line = cur_astmt->line;
 
 	switch (cur_astmt->type) {
 	case AST_STMT_EXPR:
@@ -572,9 +572,7 @@ hir_visit_assign_stmt(
 	else if (hstmt->lhs->type == HIR_EXPR_DOT)
 		is_lhs_ok = true;
 	if (!is_lhs_ok) {
-		hir_fatal(cur_astmt->line,
-			  cur_astmt->column,
-			  "LHS is not a term or an array element.");
+		hir_fatal(cur_astmt->line, "LHS is not a term or an array element.");
 		hir_free_stmt(hstmt);
 		return false;
 	}
@@ -707,15 +705,11 @@ hir_visit_elif_stmt(
 
 	/* Check the previous block. */
 	if (*prev_block == NULL || (*prev_block)->type != HIR_BLOCK_IF) {
-		hir_fatal(cur_astmt->line,
-			  cur_astmt->column,
-			  "else-if block appeared without if block");
+		hir_fatal(cur_astmt->line, "else-if block appeared without if block");
 		return false;
 	}
 	if ((*prev_block)->val.if_.cond == NULL) {
-		hir_fatal(cur_astmt->line,
-			  cur_astmt->column,
-			  "else-if appeared after else.");
+		hir_fatal(cur_astmt->line, "else-if appeared after else.");
 		return false;
 	}
 	assert((*prev_block)->val.if_.chain == NULL);
@@ -796,15 +790,11 @@ hir_visit_else_stmt(
 
 	/* Check the previous block. */
 	if (*prev_block == NULL || (*prev_block)->type != HIR_BLOCK_IF) {
-		hir_fatal(cur_astmt->line,
-			  cur_astmt->column,
-			  "else-if block appeared without if block");
+		hir_fatal(cur_astmt->line, "else-if block appeared without if block");
 		return false;
 	}
 	if ((*prev_block)->val.if_.cond == NULL) {
-		hir_fatal(cur_astmt->line,
-			  cur_astmt->column,
-			  "else appeared after else.");
+		hir_fatal(cur_astmt->line, "else appeared after else.");
 		return false;
 	}
 	assert((*prev_block)->val.if_.chain == NULL);
@@ -1188,6 +1178,9 @@ hir_visit_expr(
 	case AST_EXPR_THISCALL:
 		result = hir_visit_thiscall_expr(hexpr, aexpr);
 		break;
+	case AST_EXPR_ARRAY:
+		result = hir_visit_array_expr(hexpr, aexpr);
+		break;
 	default:
 		assert(UNIMPLEMENTED);
 		break;
@@ -1379,6 +1372,10 @@ hir_visit_call_expr(
 			}
 			arg = arg->next;
 			e->val.call.arg_count++;
+			if (e->val.call.arg_count > HIR_PARAM_SIZE) {
+				hir_fatal(hir_error_line, "Exceeded the maximum argument count.");
+				return false;
+			}
 		}
 	}
 
@@ -1434,6 +1431,51 @@ hir_visit_thiscall_expr(
 			}
 			arg = arg->next;
 			e->val.call.arg_count++;
+		}
+	}
+
+	*hexpr = e;
+
+	return true;
+}
+
+/* Visit an AST array expr. */
+static bool
+hir_visit_array_expr(
+	struct hir_expr **hexpr,
+	struct ast_expr *aexpr)
+{
+	struct hir_expr *e;
+	struct ast_expr *elem;
+
+	assert(hexpr != NULL);
+	assert(*hexpr == NULL);
+	assert(aexpr != NULL);
+	assert(aexpr->type == AST_EXPR_ARRAY);
+
+	/* Allocate an hexpr. */
+	e = malloc(sizeof(struct hir_expr));
+	if (e == NULL) {
+		hir_out_of_memory();
+		return false;
+	}
+	memset(e, 0, sizeof(struct hir_expr));
+	e->type = HIR_EXPR_ARRAY;
+
+	/* Visit the argument expressions. */
+	if (aexpr->val.array.elem_list != NULL) {
+		elem = aexpr->val.array.elem_list->list;
+		while (elem != NULL) {
+			if (!hir_visit_expr(&e->val.array.elem[e->val.array.elem_count], elem)) {
+				hir_free_expr(e);
+				return false;
+			}
+			elem = elem->next;
+			e->val.array.elem_count++;
+			if (e->val.array.elem_count > HIR_ARRAY_LITERAL_SIZE) {
+				hir_fatal(hir_error_line, "Exceeded the maximum argument count.");
+				return false;
+			}
 		}
 	}
 
@@ -1728,10 +1770,19 @@ hir_free_expr(
 			}
 		}
 		break;
+	case HIR_EXPR_ARRAY:
+		for (i = 0; i < e->val.array.elem_count; i++) {
+			if (e->val.array.elem[i] != NULL) {
+				hir_free_expr(e->val.array.elem[i]);
+				e->val.array.elem[i] = NULL;
+			}
+		}
+		break;
 	default:
 		assert(NEVER_COME_HERE);
 		break;
 	}
+	free(e);
 }
 
 /* Free an hterm. */
@@ -1769,17 +1820,15 @@ hir_free_term(
 static void
 hir_fatal(
 	int line,
-	int col,
 	const char *msg)
 {
 	hir_error_line = line;
 
 	snprintf(hir_error_message,
 		 sizeof(hir_error_message),
-		 "%s:%d:%d: %s",
+		 "%s:%d: %s",
 		 hir_file_name,
 		 line,
-		 col,
 		 msg);
 }
 

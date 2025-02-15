@@ -55,10 +55,10 @@ extern void ast_yyerror(void *scanner, char *s);
 %token <fval> TOKEN_FLOAT
 %token TOKEN_FUNC TOKEN_PLUS TOKEN_MINUS TOKEN_MUL TOKEN_DIV TOKEN_MOD TOKEN_ASSIGN
 %token TOKEN_LPAR TOKEN_RPAR TOKEN_LBLK TOKEN_RBLK TOKEN_LARR TOKEN_RARR
-%token TOKEN_SEMICOLON TOKEN_DOT TOKEN_ARROW TOKEN_COMMA TOKEN_IF TOKEN_ELSE
+%token TOKEN_SEMICOLON TOKEN_DOT TOKEN_COMMA TOKEN_IF TOKEN_ELSE
 %token TOKEN_WHILE TOKEN_FOR TOKEN_IN TOKEN_DOTDOT TOKEN_GT TOKEN_GTE TOKEN_LT
-%token TOKEN_LTE TOKEN_EQ TOKEN_NEQ TOKEN_RETURN TOKEN_BREAK TOKEN_CONTINUE TOKEN_AND
-%token TOKEN_OR
+%token TOKEN_LTE TOKEN_EQ TOKEN_NEQ TOKEN_RETURN TOKEN_BREAK TOKEN_CONTINUE 
+%token TOKEN_ARROW TOKEN_AND TOKEN_OR
 
 %type <func_list> func_list;
 %type <func> func;
@@ -95,6 +95,7 @@ extern void ast_yyerror(void *scanner, char *s);
 %left TOKEN_DIV
 %left TOKEN_MOD
 %left TOKEN_DOT
+%left TOKEN_ARROW
 
 %locations
 
@@ -433,6 +434,11 @@ expr		: term
 		{
 			$$ = ast_accept_thiscall_expr($1, $3, NULL);
 			debug("expr: thiscall(param_list)");
+		}
+		| TOKEN_LARR arg_list TOKEN_RARR
+		{
+			$$ = ast_accept_array_expr($2);
+			debug("expr: array");
 		}
 		;
 arg_list	: expr

@@ -55,6 +55,7 @@ enum ast_expr_type {
 	AST_EXPR_DOT,
 	AST_EXPR_CALL,
 	AST_EXPR_THISCALL,
+	AST_EXPR_ARRAY,
 };
 
 /* Term Type */
@@ -263,6 +264,12 @@ struct ast_expr {
 			/* Argument list. */
 			struct ast_arg_list *arg_list;
 		} thiscall;
+
+		/* Array Literal Expression */
+		struct {
+			/* Element list. */
+			struct ast_arg_list *elem_list;
+		} array;
 	} val;
 
 	/* Next expression node. */
@@ -337,6 +344,7 @@ struct ast_expr *ast_accept_subscr_expr(struct ast_expr *expr1, struct ast_expr 
 struct ast_expr *ast_accept_dot_expr(struct ast_expr *obj, char *symbol);
 struct ast_expr *ast_accept_call_expr(struct ast_expr *func, struct ast_arg_list *arg_list);
 struct ast_expr *ast_accept_thiscall_expr(struct ast_expr *obj, char *func, struct ast_arg_list *arg_list);
+struct ast_expr *ast_accept_array_expr(struct ast_arg_list *arg_list);
 struct ast_term *ast_accept_int_term(int i);
 struct ast_term *ast_accept_float_term(float f);
 struct ast_term *ast_accept_str_term(char *s);

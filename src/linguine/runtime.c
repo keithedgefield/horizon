@@ -3385,7 +3385,7 @@ rt_visit_len_op(
 		dst_val->val.i = src_val->val.dict->size;
 		break;
 	default:
-		rt_error(rt, "Value is not a string, an array, or a dictionary.n");
+		rt_error(rt, "Value is not a string, an array, or a dictionary.");
 		return false;
 	}
 

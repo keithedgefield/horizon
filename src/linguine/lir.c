@@ -85,6 +85,7 @@ static bool lir_visit_binary_expr(int dst_tmpvar, struct hir_expr *expr);
 static bool lir_visit_dot_expr(int dst_tmpvar, struct hir_expr *expr);
 static bool lir_visit_call_expr(int dst_tmpvar, struct hir_expr *expr);
 static bool lir_visit_thiscall_expr(int dst_tmpvar, struct hir_expr *expr);
+static bool lir_visit_array_expr(int dst_tmpvar, struct hir_expr *expr);
 static bool lir_visit_term(int dst_tmpvar, struct hir_term *term);
 static bool lir_visit_symbol_term(int dst_tmpvar, struct hir_term *term);
 static bool lir_visit_int_term(int dst_tmpvar, struct hir_term *term);
@@ -905,6 +906,11 @@ lir_visit_expr(
 		if (!lir_visit_thiscall_expr(dst_tmpvar, expr))
 			return false;
 		break;
+	case HIR_EXPR_ARRAY:
+		/* For an array expression. */
+		if (!lir_visit_array_expr(dst_tmpvar, expr))
+			return false;
+		break;
 	default:
 		assert(NEVER_COME_HERE);
 		abort();
@@ -1173,6 +1179,63 @@ lir_visit_thiscall_expr(
 	for (i = arg_count - 1; i >= 0; i--)
 		lir_decrement_tmpvar(arg_tmpvar[i]);
 	lir_decrement_tmpvar(obj_tmpvar);
+
+	return true;
+}
+
+static bool
+lir_visit_array_expr(
+	int dst_tmpvar,
+	struct hir_expr *expr)
+{
+	int elem_count;
+	int array_tmpvar;
+	int elem_tmpvar;
+	int index_tmpvar;
+	int i;
+
+	assert(expr != NULL);
+	assert(expr->type == HIR_EXPR_ARRAY);
+	assert(expr->val.array.elem_count > 0);
+	assert(expr->val.array.elem_count < HIR_ARRAY_LITERAL_SIZE);
+
+	elem_count = expr->val.array.elem_count;
+	
+	/* Create an array. */
+	if (!lir_put_opcode(OP_ACONST))
+		return false;
+	if (!lir_put_tmpvar(dst_tmpvar))
+		return false;
+
+	/* Push the elements. */
+	if (!lir_increment_tmpvar(&elem_tmpvar))
+		return false;
+	if (!lir_increment_tmpvar(&index_tmpvar))
+		return false;
+	for (i = 0; i < elem_count; i++) {
+		/* Visit the element. */
+		if (!lir_visit_expr(elem_tmpvar, expr->val.array.elem[i]))
+			return false;
+
+		/* Add to the array. */
+		if (!lir_put_opcode(OP_ICONST))
+			return false;
+		if (!lir_put_tmpvar(index_tmpvar))
+			return false;
+		if (!lir_put_imm32(i))
+			return false;
+		if (!lir_put_opcode(OP_STOREARRAY))
+			return false;
+		if (!lir_put_tmpvar(dst_tmpvar))
+			return false;
+		if (!lir_put_tmpvar(index_tmpvar))
+			return false;
+		if (!lir_put_tmpvar(elem_tmpvar))
+			return false;
+	}
+
+	lir_decrement_tmpvar(index_tmpvar);
+	lir_decrement_tmpvar(elem_tmpvar);
 
 	return true;
 }
