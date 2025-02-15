@@ -42,15 +42,15 @@ lin: $(LIN_SRCS)  $(LINGUINE_SRCS)
 linc: $(LINC_SRCS) $(LINGUINE_SRCS)
 	$(CC) -o linc $(CPPFLAGS) $(CFLAGS) $(LINC_SRCS) $(LINGUINE_SRCS)
 
-../src/linguine/parser.tab.c: ../src/linguine/parser.y
-	bison -Wcounterexamples -d -p ast_yy -o ../src/linguine/parser.tab.c ../src/linguine/parser.y
+src/linguine/parser.tab.c: src/linguine/parser.y
+	bison -Wcounterexamples -d -p ast_yy -o src/linguine/parser.tab.c src/linguine/parser.y
 
-../src/linguine/lexer.yy.c: ../src/linguine/lexer.l
-	flex -o ../src/linguine/lexer.yy.c --prefix=ast_yy ../src/linguine/lexer.l
+src/linguine/lexer.yy.c: src/linguine/lexer.l
+	flex -o src/linguine/lexer.yy.c --prefix=ast_yy src/linguine/lexer.l
 
 ##
 ## Phony
 ##
 
 clean:
-	rm -rf horizon lin linc
+	rm -rf horizon lin linc *.dSYM

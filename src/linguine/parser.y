@@ -53,8 +53,8 @@ extern void ast_yyerror(void *scanner, char *s);
 %token <sval> TOKEN_SYMBOL TOKEN_STR
 %token <ival> TOKEN_INT
 %token <fval> TOKEN_FLOAT
-%token TOKEN_FUNC TOKEN_PLUS TOKEN_MINUS TOKEN_MUL TOKEN_DIV TOKEN_MOD TOKEN_ASSIGN
-%token TOKEN_LPAR TOKEN_RPAR TOKEN_LBLK TOKEN_RBLK TOKEN_LARR TOKEN_RARR
+%token TOKEN_FUNC TOKEN_LARR TOKEN_RARR TOKEN_PLUS TOKEN_MINUS TOKEN_MUL TOKEN_DIV TOKEN_MOD
+%token TOKEN_ASSIGN TOKEN_LPAR TOKEN_RPAR TOKEN_LBLK TOKEN_RBLK
 %token TOKEN_SEMICOLON TOKEN_DOT TOKEN_COMMA TOKEN_IF TOKEN_ELSE
 %token TOKEN_WHILE TOKEN_FOR TOKEN_IN TOKEN_DOTDOT TOKEN_GT TOKEN_GTE TOKEN_LT
 %token TOKEN_LTE TOKEN_EQ TOKEN_NEQ TOKEN_RETURN TOKEN_BREAK TOKEN_CONTINUE 
@@ -79,8 +79,7 @@ extern void ast_yyerror(void *scanner, char *s);
 %type <term> term;
 %type <arg_list> arg_list;
 
-%right TOKEN_LARR
-%right TOKEN_LPAR
+%left UNARYMINUS
 %left TOKEN_OR
 %left TOKEN_AND
 %left TOKEN_LT
@@ -96,6 +95,8 @@ extern void ast_yyerror(void *scanner, char *s);
 %left TOKEN_MOD
 %left TOKEN_DOT
 %left TOKEN_ARROW
+%right TOKEN_LARR
+%right TOKEN_LPAR
 
 %locations
 
@@ -330,6 +331,16 @@ expr		: term
 			$$ = ast_accept_term_expr($1);
 			debug("expr: term");
 		}
+		| TOKEN_LPAR expr TOKEN_RPAR
+		{
+			$$ = $2;
+			debug("expr: (expr)");
+		}
+		| expr TOKEN_LARR expr TOKEN_RARR
+		{
+			$$ = ast_accept_subscr_expr($1, $3);
+			debug("expr: array[subscript]");
+		}
 		| expr TOKEN_OR expr
 		{
 			$$ = ast_accept_or_expr($1, $3);
@@ -395,20 +406,10 @@ expr		: term
 			$$ = ast_accept_mod_expr($1, $3);
 			debug("expr: expr div expr");
 		}
-		| TOKEN_MINUS expr
+		| TOKEN_MINUS expr %prec UNARYMINUS
 		{
 			$$ = ast_accept_neg_expr($2);
 			debug("expr: neg expr");
-		}
-		| TOKEN_LPAR expr TOKEN_RPAR
-		{
-			$$ = $2;
-			debug("expr: (expr)");
-		}
-		| expr TOKEN_LARR expr TOKEN_RARR
-		{
-			$$ = ast_accept_subscr_expr($1, $3);
-			debug("expr: array[subscript]");
 		}
 		| expr TOKEN_DOT TOKEN_SYMBOL
 		{

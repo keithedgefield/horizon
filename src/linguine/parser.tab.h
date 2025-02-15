@@ -59,18 +59,18 @@ extern int ast_yydebug;
     TOKEN_INT = 260,               /* TOKEN_INT  */
     TOKEN_FLOAT = 261,             /* TOKEN_FLOAT  */
     TOKEN_FUNC = 262,              /* TOKEN_FUNC  */
-    TOKEN_PLUS = 263,              /* TOKEN_PLUS  */
-    TOKEN_MINUS = 264,             /* TOKEN_MINUS  */
-    TOKEN_MUL = 265,               /* TOKEN_MUL  */
-    TOKEN_DIV = 266,               /* TOKEN_DIV  */
-    TOKEN_MOD = 267,               /* TOKEN_MOD  */
-    TOKEN_ASSIGN = 268,            /* TOKEN_ASSIGN  */
-    TOKEN_LPAR = 269,              /* TOKEN_LPAR  */
-    TOKEN_RPAR = 270,              /* TOKEN_RPAR  */
-    TOKEN_LBLK = 271,              /* TOKEN_LBLK  */
-    TOKEN_RBLK = 272,              /* TOKEN_RBLK  */
-    TOKEN_LARR = 273,              /* TOKEN_LARR  */
-    TOKEN_RARR = 274,              /* TOKEN_RARR  */
+    TOKEN_LARR = 263,              /* TOKEN_LARR  */
+    TOKEN_RARR = 264,              /* TOKEN_RARR  */
+    TOKEN_PLUS = 265,              /* TOKEN_PLUS  */
+    TOKEN_MINUS = 266,             /* TOKEN_MINUS  */
+    TOKEN_MUL = 267,               /* TOKEN_MUL  */
+    TOKEN_DIV = 268,               /* TOKEN_DIV  */
+    TOKEN_MOD = 269,               /* TOKEN_MOD  */
+    TOKEN_ASSIGN = 270,            /* TOKEN_ASSIGN  */
+    TOKEN_LPAR = 271,              /* TOKEN_LPAR  */
+    TOKEN_RPAR = 272,              /* TOKEN_RPAR  */
+    TOKEN_LBLK = 273,              /* TOKEN_LBLK  */
+    TOKEN_RBLK = 274,              /* TOKEN_RBLK  */
     TOKEN_SEMICOLON = 275,         /* TOKEN_SEMICOLON  */
     TOKEN_DOT = 276,               /* TOKEN_DOT  */
     TOKEN_COMMA = 277,             /* TOKEN_COMMA  */
@@ -91,7 +91,8 @@ extern int ast_yydebug;
     TOKEN_CONTINUE = 292,          /* TOKEN_CONTINUE  */
     TOKEN_ARROW = 293,             /* TOKEN_ARROW  */
     TOKEN_AND = 294,               /* TOKEN_AND  */
-    TOKEN_OR = 295                 /* TOKEN_OR  */
+    TOKEN_OR = 295,                /* TOKEN_OR  */
+    UNARYMINUS = 296               /* UNARYMINUS  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -100,7 +101,7 @@ extern int ast_yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 38 "../src/linguine/parser.y"
+#line 38 "src/linguine/parser.y"
 
 	int ival;
 	double fval;
@@ -115,7 +116,7 @@ union YYSTYPE
 	struct ast_term *term;
 	struct ast_arg_list *arg_list;
 
-#line 119 "../src/linguine/parser.tab.h"
+#line 120 "src/linguine/parser.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -144,10 +145,10 @@ extern YYLTYPE ast_yylloc;
 int ast_yyparse (void *scanner);
 
 /* "%code provides" blocks.  */
-#line 34 "../src/linguine/parser.y"
+#line 34 "src/linguine/parser.y"
 
 #define YY_DECL int ast_yylex(void *yyscanner)
 
-#line 152 "../src/linguine/parser.tab.h"
+#line 153 "src/linguine/parser.tab.h"
 
 #endif /* !YY_AST_YY_SRC_LINGUINE_PARSER_TAB_H_INCLUDED  */
