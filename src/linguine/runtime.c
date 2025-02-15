@@ -3800,7 +3800,6 @@ rt_visit_call_op(
 		rt_error(rt, BROKEN_BYTECODE);
 		return false;
 	}
-
 	if (rt->frame->tmpvar[func_tmpvar].type != RT_VALUE_FUNC) {
 		rt_error(rt, "Not a function.");
 		return false;

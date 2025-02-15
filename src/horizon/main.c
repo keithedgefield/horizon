@@ -73,7 +73,7 @@ bool load_engine_object(struct rt_env *rt)
 		const char *param_name[16];
 		bool (*cfunc)(struct rt_env *env);
 	} item[] = {
-		{"Engine_print", "print", 2, {"this", "msg"}, engine_print},
+		{"Engine_print", "print", 1, {"msg"}, engine_print},
 	};
 
 	/* Make a dictionary. */
