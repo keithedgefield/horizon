@@ -13,7 +13,8 @@ func main() {
     foo();
 
     // String
-    print("a = " + a);
+    a = "aaaaa";
+    print("a = " + a + " len=" + len(a));
     print("b = " + b);
     print("c = " + c);
 

@@ -48,8 +48,13 @@ static void rt_free_array(struct rt_env *rt, struct rt_array *array);
 static void rt_free_dict(struct rt_env *rt, struct rt_dict *dict);
 static bool rt_visit_bytecode(struct rt_env *rt, struct rt_func *func);
 static bool rt_visit_op(struct rt_env *rt, struct rt_func *func, int *pc);
+static bool rt_add_local(struct rt_env *rt, const char *name, struct rt_bindlocal **local);
+static bool rt_find_local(struct rt_env *rt, const char *name, struct rt_bindlocal **local);
+static bool rt_add_global(struct rt_env *rt, const char *name, struct rt_bindglobal **global);
+static bool rt_find_global(struct rt_env *rt, const char *name, struct rt_bindglobal **global);
 static void rt_error(struct rt_env *rt, const char *msg, ...);
 static void rt_out_of_memory(struct rt_env *rt);
+static bool rt_register_intrinsics(struct rt_env *rt);
 
 /*
  * Create a runtime environment.
@@ -60,10 +65,17 @@ rt_create(
 {
 	struct rt_env *env;
 
+	/* Allocate. */
 	env = malloc(sizeof(struct rt_env));
 	if (env == NULL)
 		return false;
 	memset(env, 0, sizeof(struct rt_env));
+
+	/* Register the intrinsics. */
+	if (!rt_register_intrinsics(env)) {
+		free(env);
+		return false;
+	}
 
 	*rt = env;
 	return true;
@@ -381,7 +393,7 @@ rt_call(
 	struct rt_value *arg,
 	struct rt_value *ret)
 {
-	struct rt_bindlocal *bl;
+	struct rt_bindlocal *local;
 	int i;
 
 	/* Allocate a frame for this call. */
@@ -390,36 +402,16 @@ rt_call(
 
 	/* Push this-pointer. */
 	if (thisptr != NULL) {
-		bl = malloc(sizeof(struct rt_bindlocal));
-		if (bl == NULL) {
-			rt_out_of_memory(rt);
+		if (!rt_add_local(rt, "this", &local))
 			return false;
-		}
-		memset(bl, 0, sizeof(struct rt_bindlocal));
-		bl->name = strdup("this");
-		if (bl->name == NULL) {
-			rt_out_of_memory(rt);
-			return false;
-		}
-		bl->val = *thisptr;
+		local->val = *thisptr;
 	}
 
 	/* Push args. */
 	for (i = 0; i < arg_count; i++) {
-		bl = malloc(sizeof(struct rt_bindlocal));
-		if (bl == NULL) {
-			rt_out_of_memory(rt);
+		if (!rt_add_local(rt, func->param_name[i], &local))
 			return false;
-		}
-		memset(bl, 0, sizeof(struct rt_bindlocal));
-		bl->name = strdup(func->param_name[i]);
-		if (bl->name == NULL) {
-			rt_out_of_memory(rt);
-			return false;
-		}
-		bl->val = arg[i];
-		bl->next = rt->frame->bindlocal;
-		rt->frame->bindlocal = bl;
+		local->val = arg[i];
 	}
 
 	/* Run. */
@@ -434,17 +426,11 @@ rt_call(
 	}
 
 	/* Search a return value. */
-	bl = rt->frame->bindlocal;
-	while (bl != NULL) {
-		if (strcmp(bl->name, "$return") == 0)
-			break;
-		bl = bl->next;
-	}
-	if (bl != NULL) {
-		*ret = bl->val;
-	} else {
+	if (!rt_find_local(rt, "$return", &local)) {
 		ret->type = RT_VALUE_INT;
 		ret->val.i = 0;
+	} else {
+		*ret = local->val;
 	}
 
 	/* Succeeded. */
@@ -1129,18 +1115,14 @@ rt_expand_dict(
  */
 bool rt_get_local(struct rt_env *rt, const char *name, struct rt_value *val)
 {
-	struct rt_bindlocal *bl;
+	struct rt_bindlocal *local;
 
-	bl = rt->frame->bindlocal;
-	while (bl != NULL) {
-		if (strcmp(bl->name, name) == 0)
-			break;
-		bl = bl->next;
-	}
-	if (bl == NULL)
+	if (!rt_find_local(rt, name, &local)) {
+		rt_error(rt, "Local variable \"%s\" not found.", name);
 		return false;
+	}
 
-	*val = bl->val;
+	*val = local->val;
 
 	return true;
 }
@@ -1148,21 +1130,71 @@ bool rt_get_local(struct rt_env *rt, const char *name, struct rt_value *val)
 /*
  * Set a local variable value. (For C func implementation)
  */
-bool rt_set_local(struct rt_env *rt, const char *name, struct rt_value *val)
+bool
+rt_set_local(
+	struct rt_env *rt,
+	const char *name,
+	struct rt_value *val)
 {
-	struct rt_bindlocal *bl;
+	struct rt_bindlocal *local;
 
-	bl = rt->frame->bindlocal;
-	while (bl != NULL) {
-		if (strcmp(bl->name, name) == 0)
-			break;
+	if (!rt_find_local(rt, name, &local)) {
+		/* If the name is $return, add a local variable. Otherwise, fail. */
+		if (strcmp(name, "$return") != 0)
+			return false;
+		if (!rt_add_local(rt, "$return", &local))
+			return false;
 	}
-	if (bl == NULL)
-		return false;
 
-	bl->val = *val;
+	local->val = *val;
 
 	return true;
+}
+
+static bool
+rt_add_local(
+	struct rt_env *rt,
+	const char *name,
+	struct rt_bindlocal **local)
+{
+	*local = malloc(sizeof(struct rt_bindlocal));
+	if (*local == NULL) {
+		rt_out_of_memory(rt);
+		return false;
+	}
+
+	(*local)->name = strdup(name);
+	if ((*local)->name == NULL) {
+		rt_out_of_memory(rt);
+		return false;
+	}
+
+	(*local)->next = rt->frame->local;
+	rt->frame->local = (*local);
+
+	return true;
+}
+
+static bool
+rt_find_local(
+	struct rt_env *rt,
+	const char *name,
+	struct rt_bindlocal **local)
+{
+	struct rt_bindlocal *l;
+
+	l = rt->frame->local;
+	while (l != NULL) {
+		if (strcmp(l->name, name) == 0) {
+			*local = l;
+			return true;
+		}
+		l = l->next;
+	}
+
+	*local = NULL;
+
+	return false;
 }
 
 /*
@@ -1192,6 +1224,29 @@ rt_get_global(
 	return true;
 }
 
+static bool
+rt_find_global(
+	struct rt_env *rt,
+	const char *name,
+	struct rt_bindglobal **global)
+{
+	struct rt_bindglobal *g;
+
+	g = rt->global;
+	while (g != NULL) {
+		if (strcmp(g->name, name) == 0) {
+			*global = g;
+			return true;
+		}
+		g = g->next;
+	}
+
+	*global = NULL;
+
+	return false;
+}
+
+
 /*
  * Set a global variable.
  */
@@ -1203,28 +1258,9 @@ rt_set_global(
 {
 	struct rt_bindglobal *global;
 
-	global = rt->global;
-	while (global != NULL) {
-		if (strcmp(global->name, name) == 0)
-			break;
-	}
-	if (global == NULL) {
-		global = malloc(sizeof(struct rt_bindglobal));
-		if (global == NULL) {
-			rt_out_of_memory(rt);
+	if (!rt_find_global(rt, name, &global)) {
+		if (!rt_add_global(rt, name, &global))
 			return false;
-		}
-
-		global->name = strdup(name);
-		if (global->name == NULL) {
-			rt_out_of_memory(rt);
-			return false;
-		}
-		global->val.type = RT_VALUE_INT;
-		global->val.val.i = 0;
-
-		global->next = rt->global;
-		rt->global = global;
 	}
 
 	global->val = *val;
@@ -1232,26 +1268,34 @@ rt_set_global(
 	return true;
 }
 
-/* Output an error message.*/
-static void
-rt_error(
+static bool
+rt_add_global(
 	struct rt_env *rt,
-	const char *msg,
-	...)
+	const char *name,
+	struct rt_bindglobal **global)
 {
-	va_list ap;
+	struct rt_bindglobal *g;
 
-	va_start(ap, msg);
-	vsnprintf(rt->error_message, sizeof(rt->error_message), msg, ap);
-	va_end(ap);
-}
+	g = malloc(sizeof(struct rt_bindglobal));
+	if (g == NULL) {
+		rt_out_of_memory(rt);
+		return false;
+	}
 
-/* Output an out-of-memory message. */
-static void
-rt_out_of_memory(
-	struct rt_env *rt)
-{
-	rt_error(rt, "Out of memory.");
+	g->name = strdup(name);
+	if (g->name == NULL) {
+		rt_out_of_memory(rt);
+		return false;
+	}
+	g->val.type = RT_VALUE_INT;
+	g->val.val.i = 0;
+
+	g->next = rt->global;
+	rt->global = g;
+
+	*global = g;
+
+	return true;
 }
 
 /*
@@ -3517,27 +3561,13 @@ rt_visit_loadsymbol_op(
 	}
 
 	/* Search local. */
-	local = rt->frame->bindlocal;
-	while (local != NULL) {
-		if (strcmp(local->name, symbol) == 0) {
-			rt->frame->tmpvar[dst] = local->val;
-			break;
-		}
-		local = local->next;
-	}
-
-	/* Search global. */
-	if (local == NULL) {
+	if (rt_find_local(rt, symbol, &local)) {
+		rt->frame->tmpvar[dst] = local->val;
+	} else {
 		/* Search global. */
-		global = rt->global;
-		while (global != NULL) {
-			if (strcmp(global->name, symbol) == 0) {
-				rt->frame->tmpvar[dst] = global->val;
-				break;
-			}
-			global = global->next;
-		}
-		if (global == NULL) {
+		if (rt_find_global(rt, symbol, &global)) {
+			rt->frame->tmpvar[dst] = global->val;
+		} else {
 			rt_error(rt, "Symbol \"%s\" not found.", symbol);
 			return false;
 		}
@@ -3572,45 +3602,23 @@ rt_visit_storesymbol_op(
 	      (func->bytecode[*pc + 1 + len + 1 + 1]);
 
 	/* Search local. */
-	local = rt->frame->bindlocal;
-	while (local != NULL) {
-		if (strcmp(local->name, symbol) == 0) {
-			local->val = rt->frame->tmpvar[src];
-			break;
-		}
-		local = local->next;
-	}
-
-	/* Search global. */
-	if (local == NULL) {
-		/* Search global. */
-		global = rt->global;
-		while (global != NULL) {
-			if (strcmp(global->name, symbol) == 0) {
-				global->val = rt->frame->tmpvar[src];
-				rt_make_deep_reference(rt, &global->val);
-				break;
-			}
-			global = global->next;
-		}
-	}
-
-	/* Bind a local variable. */
-	if (local == NULL && global == NULL) {
-		local = malloc(sizeof(struct rt_bindlocal));
-		if (local == NULL) {
-			rt_out_of_memory(rt);
-			return false;
-		}
-		memset(local, 0, sizeof(struct rt_bindlocal));
-		local->name = strdup(symbol);
-		if (local->name == NULL) {
-			rt_out_of_memory(rt);
-			return false;
-		}
+	if (rt_find_local(rt, symbol, &local)) {
+		/* Found. */
 		local->val = rt->frame->tmpvar[src];
-		local->next = rt->frame->bindlocal;
-		rt->frame->bindlocal = local;
+	} else {
+		/* Not found. Search global. */
+		if (rt_find_global(rt, symbol, &global)) {
+			/* Found. */
+			global->val = rt->frame->tmpvar[src];
+			rt_make_deep_reference(rt, &global->val);
+		} else {
+			/* Not found. Bind a local variable. */
+			if (local == NULL && global == NULL) {
+				if (!rt_add_local(rt, symbol, &local))
+					return false;
+				local->val = rt->frame->tmpvar[src];
+			}
+		}
 	}
 
 	*pc += 1 + len + 1 + 2;
@@ -4165,3 +4173,104 @@ rt_visit_op(
 
 	return true;
 }
+
+/*
+ * Intrinsics
+ */
+
+static bool rt_intrin_len(struct rt_env *rt);
+static bool rt_intrin_remove(struct rt_env *rt);
+static bool rt_intrin_resize(struct rt_env *rt);
+
+static bool
+rt_register_intrinsics(
+	struct rt_env *rt)
+{
+	struct item {
+		const char *name;
+		int param_count;
+		const char *param[HIR_PARAM_SIZE];
+		bool (*cfunc)(struct rt_env *rt);
+	} items[] = {
+		{"len", 1, {"obj"}, rt_intrin_len},
+	};
+	int i;
+
+	for (i = 0; i < sizeof(items) / sizeof(struct item); i++) {
+		if (!rt_register_cfunc(rt,
+				       items[i].name,
+				       items[i].param_count,
+				       items[i].param,
+				       items[i].cfunc))
+			return false;
+	}
+
+	return true;
+}
+
+/* len() */
+static bool
+rt_intrin_len(
+	struct rt_env *rt)
+{
+	struct rt_value val, ret;
+
+	if (!rt_get_local(rt, "obj", &val))
+		return false;
+
+	switch (val.type) {
+	case RT_VALUE_INT:
+	case RT_VALUE_FLOAT:
+	case RT_VALUE_FUNC:
+		ret.type = RT_VALUE_INT;
+		ret.val.i = 0;
+		break;
+	case RT_VALUE_STRING:
+		ret.type = RT_VALUE_INT;
+		ret.val.i = strlen(val.val.str->s);
+		break;
+	case RT_VALUE_ARRAY:
+		ret.type = RT_VALUE_INT;
+		ret.val.i = val.val.arr->size;
+		break;
+	case RT_VALUE_DICT:
+		ret.type = RT_VALUE_INT;
+		ret.val.i = val.val.dict->size;
+		break;
+	default:
+		assert(NEVER_COME_HERE);
+		break;
+	}
+
+	if (!rt_set_local(rt, "$return", &ret))
+		return false;
+
+	return true;
+}
+
+/*
+ * Error Handling
+ */
+
+/* Output an error message.*/
+static void
+rt_error(
+	struct rt_env *rt,
+	const char *msg,
+	...)
+{
+	va_list ap;
+
+	va_start(ap, msg);
+	vsnprintf(rt->error_message, sizeof(rt->error_message), msg, ap);
+	va_end(ap);
+}
+
+/* Output an out-of-memory message. */
+static void
+rt_out_of_memory(
+	struct rt_env *rt)
+{
+	rt_error(rt, "Out of memory.");
+}
+

@@ -118,7 +118,7 @@ struct rt_frame {
 	struct rt_value *tmpvar;
 
 	/* bindlocal. */
-	struct rt_bindlocal *bindlocal;
+	struct rt_bindlocal *local;
 
 	/* Shallow string list. */
 	struct rt_string *shallow_str_list;
