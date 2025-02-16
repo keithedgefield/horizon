@@ -51,6 +51,10 @@ func main() {
     for (k, v in dict) {
         print("key = " + k + ", value = " + v);
     }
+
+    // Lambda
+    f = lambda (a) { return a; };
+    print("f(1) = " + f(1));
 }
 
 func foo() {

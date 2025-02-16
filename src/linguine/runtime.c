@@ -129,18 +129,12 @@ const char *rt_get_error_message(struct rt_env *rt)
  */
 const char *rt_get_error_file(struct rt_env *rt)
 {
-	if (rt->frame == NULL)
-		return "(no func)";
-
-	return rt->frame->func->file_name;
+	return &rt->file_name[0];
 }
 
 /* Get an error line number. */
 int rt_get_error_line(struct rt_env *rt)
 {
-	if (rt->frame == NULL)
-		return -1;
-
 	return rt->line;
 }
 
@@ -163,21 +157,17 @@ rt_register_source(
 	do {
 		/* Do parse and build AST. */
 		if (!ast_build(file_name, source_text)) {
-			rt_error(rt,
-				 "%s:%d: error: %s",
-				 ast_get_file_name(),
-				 ast_get_error_line(),
-				 ast_get_error_message());
+			strncpy(rt->file_name, ast_get_file_name(), sizeof(rt->file_name));
+			rt->line = ast_get_error_line();
+			rt_error(rt, "%s", ast_get_error_message());
 			break;
 		}
 
 		/* Transform AST to HIR. */
 		if (!hir_build()) {
-			rt_error(rt,
-				 "%s:%d: error: %s",
-				 hir_get_file_name(),
-				 hir_get_error_line(),
-				 hir_get_error_message());
+			strncpy(rt->file_name, hir_get_file_name(), sizeof(rt->file_name));
+			rt->line = hir_get_error_line();
+			rt_error(rt, "%s", hir_get_error_message());
 			break;
 		}
 
@@ -187,23 +177,15 @@ rt_register_source(
 			/* Transform HIR to LIR (bytecode). */
 			hfunc = hir_get_function(i);
 			if (!lir_build(hfunc, &lfunc)) {
-				rt_error(rt,
-					 "%s:%d: error: %s",
-					 lir_get_file_name(),
-					 lir_get_error_line(),
-					 lir_get_error_message());
+				strncpy(rt->file_name, lir_get_file_name(), sizeof(rt->file_name));
+				rt->line = lir_get_error_line();
+				rt_error(rt, "%s", lir_get_error_message());
 				break;
 			}
 
 			/* Make a function object. */
-			if (!rt_register_lir(rt, lfunc)) {
-				rt_error(rt,
-					 "%s:%d: error: %s",
-					 rt->file_name,
-					 rt->line,
-					 rt->error_message);
+			if (!rt_register_lir(rt, lfunc))
 				break;
-			}
 
 			/* Free a LIR. */
 			lir_free(lfunc);
@@ -445,6 +427,8 @@ rt_call(
 		if (!func->cfunc(rt))
 			return false;
 	} else {
+		strncpy(rt->file_name, rt->frame->func->file_name, sizeof(rt->file_name));
+
 		if (!rt_visit_bytecode(rt, func))
 			return false;
 	}
@@ -783,67 +767,6 @@ rt_get_value_type(
 	assert(type != NULL);
 
 	*type = val->type;
-
-	return true;
-}
-
-/*
- * Retain a value.
- */
-bool
-rt_ref_value(
-	struct rt_env *rt,
-	struct rt_value *val)
-{
-	switch (val->type) {
-	case RT_VALUE_INT:
-	case RT_VALUE_FLOAT:
-		break;
-	case RT_VALUE_STRING:
-		val->val.str->ref_count++;
-		break;
-	case RT_VALUE_ARRAY:
-		val->val.arr->ref_count++;
-		break;
-	case RT_VALUE_DICT:
-		val->val.arr->ref_count++;
-		break;
-	default:
-		assert(NEVER_COME_HERE);
-		return false;
-	}
-
-	return true;
-}
-
-/*
- * Delete a value.
- */
-bool
-rt_unref_value(
-	struct rt_env *rt,
-	struct rt_value *val)
-{
-	assert(rt != NULL);
-	assert(val != NULL);
-
-	switch (val->type) {
-	case RT_VALUE_INT:
-	case RT_VALUE_FLOAT:
-		break;
-	case RT_VALUE_STRING:
-		val->val.str->ref_count--;
-		break;
-	case RT_VALUE_ARRAY:
-		val->val.arr->ref_count--;
-		break;
-	case RT_VALUE_DICT:
-		val->val.dict->ref_count--;
-		break;
-	default:
-		assert(NEVER_COME_HERE);
-		break;
-	}
 
 	return true;
 }
@@ -3686,8 +3609,6 @@ rt_visit_storesymbol_op(
 			return false;
 		}
 		local->val = rt->frame->tmpvar[src];
-		if (!rt_ref_value(rt, &local->val))
-			return false;
 		local->next = rt->frame->bindlocal;
 		rt->frame->bindlocal = local;
 	}
@@ -4050,30 +3971,6 @@ rt_visit_jmpiffalse_op(
 		*pc = target;
 	else
 		*pc += 1 + 2 + 4;
-
-	return true;
-}
-
-/* Visit an ROP_FILEINFO instruction. */
-static inline bool
-rt_visit_fileinfo_op(
-	struct rt_env *rt,
-	struct rt_func *func,
-	int *pc)
-{
-	const char *name;
-	int len;
-
-	name = (const char *)&func->bytecode[*pc + 1];
-	len = strlen(name);
-	if (*pc + 1 + len + 1 > func->bytecode_size) {
-		rt_error(rt, BROKEN_BYTECODE);
-		return false;
-	}
-
-	strncpy(rt->file_name, name, sizeof(rt->file_name) - 1);
-
-	*pc += 1 + len + 1;
 
 	return true;
 }

@@ -59,42 +59,43 @@ extern int ast_yydebug;
     TOKEN_INT = 260,               /* TOKEN_INT  */
     TOKEN_FLOAT = 261,             /* TOKEN_FLOAT  */
     TOKEN_FUNC = 262,              /* TOKEN_FUNC  */
-    TOKEN_LARR = 263,              /* TOKEN_LARR  */
-    TOKEN_RARR = 264,              /* TOKEN_RARR  */
-    TOKEN_PLUS = 265,              /* TOKEN_PLUS  */
-    TOKEN_MINUS = 266,             /* TOKEN_MINUS  */
-    TOKEN_MUL = 267,               /* TOKEN_MUL  */
-    TOKEN_DIV = 268,               /* TOKEN_DIV  */
-    TOKEN_MOD = 269,               /* TOKEN_MOD  */
-    TOKEN_ASSIGN = 270,            /* TOKEN_ASSIGN  */
-    TOKEN_LPAR = 271,              /* TOKEN_LPAR  */
-    TOKEN_RPAR = 272,              /* TOKEN_RPAR  */
-    TOKEN_LBLK = 273,              /* TOKEN_LBLK  */
-    TOKEN_RBLK = 274,              /* TOKEN_RBLK  */
-    TOKEN_SEMICOLON = 275,         /* TOKEN_SEMICOLON  */
-    TOKEN_COLON = 276,             /* TOKEN_COLON  */
-    TOKEN_DOT = 277,               /* TOKEN_DOT  */
-    TOKEN_COMMA = 278,             /* TOKEN_COMMA  */
-    TOKEN_IF = 279,                /* TOKEN_IF  */
-    TOKEN_ELSE = 280,              /* TOKEN_ELSE  */
-    TOKEN_WHILE = 281,             /* TOKEN_WHILE  */
-    TOKEN_FOR = 282,               /* TOKEN_FOR  */
-    TOKEN_IN = 283,                /* TOKEN_IN  */
-    TOKEN_DOTDOT = 284,            /* TOKEN_DOTDOT  */
-    TOKEN_GT = 285,                /* TOKEN_GT  */
-    TOKEN_GTE = 286,               /* TOKEN_GTE  */
-    TOKEN_LT = 287,                /* TOKEN_LT  */
-    TOKEN_LTE = 288,               /* TOKEN_LTE  */
-    TOKEN_EQ = 289,                /* TOKEN_EQ  */
-    TOKEN_NEQ = 290,               /* TOKEN_NEQ  */
-    TOKEN_RETURN = 291,            /* TOKEN_RETURN  */
-    TOKEN_BREAK = 292,             /* TOKEN_BREAK  */
-    TOKEN_CONTINUE = 293,          /* TOKEN_CONTINUE  */
-    TOKEN_ARROW = 294,             /* TOKEN_ARROW  */
-    TOKEN_DARROW = 295,            /* TOKEN_DARROW  */
-    TOKEN_AND = 296,               /* TOKEN_AND  */
-    TOKEN_OR = 297,                /* TOKEN_OR  */
-    UNARYMINUS = 298               /* UNARYMINUS  */
+    TOKEN_LAMBDA = 263,            /* TOKEN_LAMBDA  */
+    TOKEN_LARR = 264,              /* TOKEN_LARR  */
+    TOKEN_RARR = 265,              /* TOKEN_RARR  */
+    TOKEN_PLUS = 266,              /* TOKEN_PLUS  */
+    TOKEN_MINUS = 267,             /* TOKEN_MINUS  */
+    TOKEN_MUL = 268,               /* TOKEN_MUL  */
+    TOKEN_DIV = 269,               /* TOKEN_DIV  */
+    TOKEN_MOD = 270,               /* TOKEN_MOD  */
+    TOKEN_ASSIGN = 271,            /* TOKEN_ASSIGN  */
+    TOKEN_LPAR = 272,              /* TOKEN_LPAR  */
+    TOKEN_RPAR = 273,              /* TOKEN_RPAR  */
+    TOKEN_LBLK = 274,              /* TOKEN_LBLK  */
+    TOKEN_RBLK = 275,              /* TOKEN_RBLK  */
+    TOKEN_SEMICOLON = 276,         /* TOKEN_SEMICOLON  */
+    TOKEN_COLON = 277,             /* TOKEN_COLON  */
+    TOKEN_DOT = 278,               /* TOKEN_DOT  */
+    TOKEN_COMMA = 279,             /* TOKEN_COMMA  */
+    TOKEN_IF = 280,                /* TOKEN_IF  */
+    TOKEN_ELSE = 281,              /* TOKEN_ELSE  */
+    TOKEN_WHILE = 282,             /* TOKEN_WHILE  */
+    TOKEN_FOR = 283,               /* TOKEN_FOR  */
+    TOKEN_IN = 284,                /* TOKEN_IN  */
+    TOKEN_DOTDOT = 285,            /* TOKEN_DOTDOT  */
+    TOKEN_GT = 286,                /* TOKEN_GT  */
+    TOKEN_GTE = 287,               /* TOKEN_GTE  */
+    TOKEN_LT = 288,                /* TOKEN_LT  */
+    TOKEN_LTE = 289,               /* TOKEN_LTE  */
+    TOKEN_EQ = 290,                /* TOKEN_EQ  */
+    TOKEN_NEQ = 291,               /* TOKEN_NEQ  */
+    TOKEN_RETURN = 292,            /* TOKEN_RETURN  */
+    TOKEN_BREAK = 293,             /* TOKEN_BREAK  */
+    TOKEN_CONTINUE = 294,          /* TOKEN_CONTINUE  */
+    TOKEN_ARROW = 295,             /* TOKEN_ARROW  */
+    TOKEN_DARROW = 296,            /* TOKEN_DARROW  */
+    TOKEN_AND = 297,               /* TOKEN_AND  */
+    TOKEN_OR = 298,                /* TOKEN_OR  */
+    UNARYMINUS = 299               /* UNARYMINUS  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -120,7 +121,7 @@ union YYSTYPE
 	struct ast_kv_list *kv_list;
 	struct ast_kv *kv;
 
-#line 124 "src/linguine/parser.tab.h"
+#line 125 "src/linguine/parser.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -153,6 +154,6 @@ int ast_yyparse (void *scanner);
 
 #define YY_DECL int ast_yylex(void *yyscanner)
 
-#line 157 "src/linguine/parser.tab.h"
+#line 158 "src/linguine/parser.tab.h"
 
 #endif /* !YY_AST_YY_SRC_LINGUINE_PARSER_TAB_H_INCLUDED  */

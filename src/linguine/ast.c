@@ -977,6 +977,27 @@ ast_accept_dict_expr(
 	return expr;
 }
 
+/* Called from the parser when it accepted a expr with an anonymous function syntax. */
+struct ast_expr *
+ast_accept_func_expr(
+	struct ast_param_list *param_list,
+	struct ast_stmt_list *stmt_list)
+{
+	struct ast_expr *expr;
+
+	expr = malloc(sizeof(struct ast_expr));
+	if (expr == NULL) {
+		ast_out_of_memory();
+		return NULL;
+	}
+	memset(expr, 0, sizeof(struct ast_expr));
+	expr->type = AST_EXPR_FUNC;
+	expr->val.func.param_list = param_list;
+	expr->val.func.stmt_list = stmt_list;
+
+	return expr;
+}
+
 /* Called from the parser when it accepted a key-value list. */
 struct ast_kv_list *
 ast_accept_kv_list(

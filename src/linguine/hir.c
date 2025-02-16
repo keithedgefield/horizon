@@ -18,9 +18,6 @@
 #include <stdarg.h>
 #include <assert.h>
 
-/* Maximum functions in a module. */
-#define HIR_FUNC_MAX	128
-
 /* False assertions. */
 #define NEVER_COME_HERE		(0)
 #define UNIMPLEMENTED		(0)
@@ -41,20 +38,31 @@
 /*
  * Constructed HIR.
  */
+
+#define HIR_FUNC_MAX	128
+
 char *hir_file_name;
 int hir_func_count;
 struct hir_block *hir_func_tbl[HIR_FUNC_MAX];
 
-/* Error position and message. */
+/*
+ * Error position and message.
+ */
+
 static int hir_error_line;
 static int hir_error_col;
 static char hir_error_message[65536];
 
 /*
- * Previously constructed AST.
+ * Anonymous functions.
  */
-extern struct ast_func_list *ast_func_list;
-extern const char *ast_file_name;
+
+#define ANON_FUNC_SIZE	256
+
+static int hir_anon_func_count;
+static char *hir_anon_func_name[ANON_FUNC_SIZE];
+static struct ast_param_list *hir_anon_func_param_list[ANON_FUNC_SIZE];
+static struct ast_stmt_list *hir_anon_func_stmt_list[ANON_FUNC_SIZE];
 
 /* Forward Declaration */
 static bool hir_visit_func(struct ast_func *afunc);
@@ -78,8 +86,10 @@ static bool hir_visit_call_expr(struct hir_expr **hexpr, struct ast_expr *aexpr)
 static bool hir_visit_thiscall_expr(struct hir_expr **hexpr, struct ast_expr *aexpr);
 static bool hir_visit_array_expr(struct hir_expr **hexpr, struct ast_expr *aexpr);
 static bool hir_visit_dict_expr(struct hir_expr **hexpr, struct ast_expr *aexpr);
+static bool hir_visit_func_expr(struct hir_expr **hexpr, struct ast_expr *aexpr);
 static bool hir_visit_term(struct hir_term **hterm, struct ast_term *aterm);
 static bool hir_visit_param_list(struct hir_block *hfunc,struct ast_func *afunc);
+static bool hir_defer_anon_func(struct ast_expr *aexpr, char **symbol);
 static void hir_free_block(struct hir_block *b);
 static void hir_free_stmt(struct hir_stmt *s);
 static void hir_free_expr(struct hir_expr *e);
@@ -95,6 +105,7 @@ hir_build(void)
 {
 	struct ast_func_list *func_list;
 	struct ast_func *func;
+	int i;
 
 	assert(hir_file_name == NULL);
 
@@ -110,17 +121,23 @@ hir_build(void)
 	assert(func_list != NULL);
 	func = func_list->list;
 	while (func != NULL) {
-		/* Check maximum functions. */
-		if (hir_func_count >= HIR_FUNC_MAX) {
-			hir_fatal(0, "Too many functions.");
-			return false;
-		}
-
 		/* Visit an AST func. */
 		if (!hir_visit_func(func))
 			return false;
 
 		func = func->next;
+	}
+
+	/* For each deferred anonymous func: */
+	for (i = 0; i < hir_anon_func_count; i++) {
+		/* Visit an AST func. */
+		struct ast_func afunc;
+		afunc.name = hir_anon_func_name[i];
+		afunc.param_list = hir_anon_func_param_list[i];
+		afunc.stmt_list = hir_anon_func_stmt_list[i];
+		afunc.next = NULL;
+		if (!hir_visit_func(&afunc))
+			return false;
 	}
 
 	return true;
@@ -181,6 +198,12 @@ hir_visit_func(
 	struct hir_block *prev_block;
 	struct ast_stmt *cur_astmt;
 	struct ast_stmt *prev_astmt;
+
+	/* Check maximum functions. */
+	if (hir_func_count >= HIR_FUNC_MAX) {
+		hir_fatal(0, "Too many functions.");
+		return false;
+	}
 
 	/* Alloc a func block. */
 	func_block = malloc(sizeof(struct hir_block));
@@ -1088,8 +1111,26 @@ hir_visit_return_stmt(
 	memset(hstmt, 0, sizeof(struct hir_stmt));
 	hstmt->line = cur_astmt->line;
 
-	/* TODO: Set LHS to $_. */
-	hstmt->lhs = NULL;
+	/* Set LHS. */
+	hstmt->lhs = malloc(sizeof(struct hir_expr));
+	if (hstmt->lhs == NULL) {
+		hir_out_of_memory();
+		return false;
+	}
+	memset(hstmt->lhs, 0, sizeof(struct hir_expr));
+	hstmt->lhs->type = HIR_EXPR_TERM;
+	hstmt->lhs->val.term.term = malloc(sizeof(struct hir_term));
+	if (hstmt->lhs->val.term.term == NULL) {
+		hir_out_of_memory();
+		return false;
+	}
+	memset(hstmt->lhs->val.term.term, 0, sizeof(struct hir_term));
+	hstmt->lhs->val.term.term->type = HIR_TERM_SYMBOL;
+	hstmt->lhs->val.term.term->val.symbol = strdup("$return");
+	if (hstmt->lhs->val.term.term->val.symbol == NULL) {
+		hir_out_of_memory();
+		return false;
+	}
 
 	/* Visit an expr. */
 	if (!hir_visit_expr(&hstmt->rhs, cur_astmt->val.return_.expr)) {
@@ -1184,6 +1225,9 @@ hir_visit_expr(
 		break;
 	case AST_EXPR_DICT:
 		result = hir_visit_dict_expr(hexpr, aexpr);
+		break;
+	case AST_EXPR_FUNC:
+		result = hir_visit_func_expr(hexpr, aexpr);
 		break;
 	default:
 		assert(UNIMPLEMENTED);
@@ -1549,6 +1593,51 @@ hir_visit_dict_expr(
 	return true;
 }
 
+/* Visit an AST anonymous function expr. */
+static bool
+hir_visit_func_expr(
+	struct hir_expr **hexpr,
+	struct ast_expr *aexpr)
+{
+	struct hir_expr *e;
+	struct hir_term *t;
+	int index;
+
+	assert(hexpr != NULL);
+	assert(*hexpr == NULL);
+	assert(aexpr != NULL);
+	assert(aexpr->type == AST_EXPR_FUNC);
+
+	/* Here, we replace an anonymous function to a symbol. */
+
+	/* Alocate an hterm. */
+	t = malloc(sizeof(struct hir_term));
+	if (t == NULL) {
+		hir_out_of_memory();
+		return false;
+	}
+	memset(t, 0, sizeof(struct hir_term));
+	t->type = HIR_TERM_SYMBOL;
+
+	/* Allocate an hexpr. */
+	e = malloc(sizeof(struct hir_expr));
+	if (e == NULL) {
+		hir_out_of_memory();
+		return false;
+	}
+	memset(e, 0, sizeof(struct hir_expr));
+	e->type = HIR_EXPR_TERM;
+	e->val.term.term = t;
+
+	/* Defer the analysis of the anonymous function. */
+	if (!hir_defer_anon_func(aexpr, &t->val.symbol))
+		return false;
+
+	*hexpr = e;
+
+	return true;
+}
+
 /* Visit an AST term. */
 static bool
 hir_visit_term(
@@ -1638,6 +1727,34 @@ hir_visit_param_list(
 		param = param->next;
 	}
 	hfunc->val.func.param_count = param_count;
+
+	return true;
+}
+
+/* Defer an analysis of an anonymous function. */
+static bool
+hir_defer_anon_func(
+	struct ast_expr *aexpr,
+	char **symbol)
+{
+	char name[1024];
+
+	snprintf(name, sizeof(name), "$anon.%s.%d", hir_file_name, hir_anon_func_count);
+	*symbol = strdup(name);
+	if (*symbol == NULL) {
+		hir_out_of_memory();
+		return false;
+	}
+
+	hir_anon_func_name[hir_anon_func_count] = *symbol;
+	hir_anon_func_param_list[hir_anon_func_count] = aexpr->val.func.param_list;
+	hir_anon_func_stmt_list[hir_anon_func_count] = aexpr->val.func.stmt_list;
+
+	hir_anon_func_count++;
+	if (hir_anon_func_count >= ANON_FUNC_SIZE) {
+		hir_fatal(hir_error_line, "Too many anonymous functions.");
+		return false;
+	}
 
 	return true;
 }

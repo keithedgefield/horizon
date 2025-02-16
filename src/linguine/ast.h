@@ -57,6 +57,7 @@ enum ast_expr_type {
 	AST_EXPR_THISCALL,
 	AST_EXPR_ARRAY,
 	AST_EXPR_DICT,
+	AST_EXPR_FUNC,
 };
 
 /* Term Type */
@@ -277,6 +278,15 @@ struct ast_expr {
 			/* Element list. */
 			struct ast_kv_list *kv_list;
 		} dict;
+
+		/* Anonymous Function Literal Expression */
+		struct {
+			/* Parameter list. */
+			struct ast_param_list *param_list;
+
+			/* Statement list. */
+			struct ast_stmt_list *stmt_list;
+		} func;
 	} val;
 
 	/* Next expression node. */
@@ -365,6 +375,7 @@ struct ast_expr *ast_accept_call_expr(struct ast_expr *func, struct ast_arg_list
 struct ast_expr *ast_accept_thiscall_expr(struct ast_expr *obj, char *func, struct ast_arg_list *arg_list);
 struct ast_expr *ast_accept_array_expr(struct ast_arg_list *arg_list);
 struct ast_expr *ast_accept_dict_expr(struct ast_kv_list *kv_list);
+struct ast_expr *ast_accept_func_expr(struct ast_param_list *param_list, struct ast_stmt_list *stmt_list);
 struct ast_kv_list *ast_accept_kv_list(struct ast_kv_list *kv_list, struct ast_kv *kv);
 struct ast_kv *ast_accept_kv(char *key, struct ast_expr *value);
 struct ast_term *ast_accept_int_term(int i);

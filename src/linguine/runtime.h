@@ -151,7 +151,6 @@ struct rt_value {
 
 /* String object. */
 struct rt_string {
-	int ref_count;
 	char *s;
 
 	/* String list (shallow or deep). */
@@ -165,7 +164,6 @@ struct rt_string {
 
 /* Array object */
 struct rt_array {
-	int ref_count;
 	int alloc_size;
 	int size;
 	struct rt_value *table;
@@ -181,7 +179,6 @@ struct rt_array {
 
 /* Dictionary object. */
 struct rt_dict {
-	int ref_count;
 	int alloc_size;
 	int size;
 	char **key;
@@ -370,18 +367,6 @@ rt_get_value_type(
 	struct rt_env *rt,
 	struct rt_value *val,
 	int *type);
-
-/* Retain a value. */
-bool
-rt_ref_value(
-	struct rt_env *rt,
-	struct rt_value *val);
-
-/* Delete a value. */
-bool
-rt_unref_value(
-	struct rt_env *rt,
-	struct rt_value *val);
 
 /* Get an integer value. */
 bool
