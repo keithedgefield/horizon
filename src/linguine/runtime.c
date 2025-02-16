@@ -925,6 +925,7 @@ rt_expand_array(
 			rt_out_of_memory(rt);
 			return false;
 		}
+		memset(new_tbl, 0, sizeof(struct rt_value) * size);
 		memcpy(new_tbl, arr->table, sizeof(struct rt_value) * arr->alloc_size);
 		free(arr->table);
 		arr->table = new_tbl;
@@ -933,6 +934,36 @@ rt_expand_array(
 		/* Increment the heap usage. */
 		rt->heap_usage += arr->alloc_size * sizeof(struct rt_value);
 	}
+
+	return true;
+}
+
+static bool
+rt_resize_array(
+	struct rt_env *rt,
+	struct rt_value *arr,
+	int size)
+{
+	struct rt_array *a;
+	struct rt_value *new_tbl;
+
+	assert(rt != NULL);
+	assert(arr->type == RT_VALUE_ARRAY);
+
+	a = arr->val.arr;
+
+	/* Expand the array size if needed. */
+	if (!rt_expand_array(rt, arr, size))
+		return false;
+
+	/* If we shrink the array: */
+	if (size <= a->size) {
+		/* Remove the reminder. */
+		memset(&a->table[size], 0, sizeof(struct rt_value) * (a->size - size - 1));
+	}
+
+	/* Set the element count. */
+	a->size = size;
 
 	return true;
 }
@@ -1108,6 +1139,40 @@ rt_expand_dict(
 	}
 
 	return true;
+}
+
+/* Remove a dictionary element. */
+bool
+rt_remove_dict_elem(
+	struct rt_env *rt,
+	struct rt_value *dict,
+	const char *key)
+{
+	int i;
+
+	assert(rt != NULL);
+	assert(dict != NULL);
+	assert(dict->type == RT_VALUE_DICT);
+	assert(key != NULL);
+
+	/* Search for the key. */
+	for (i = 0; i < dict->val.dict->size; i++) {
+		if (strcmp(dict->val.dict->key[i], key) == 0) {
+			/* Remove the key and value. */
+			free(dict->val.dict->key[i]);
+			memmove(&dict->val.dict->key[i],
+				&dict->val.dict->key[i + 1],
+				sizeof(const char *) * (dict->val.dict->size - i - 1));
+			memmove(&dict->val.dict->value[i],
+				&dict->val.dict->value[i + 1],
+				sizeof(struct rt_value) * (dict->val.dict->size - i - 1));
+			dict->val.dict->size--;
+			return true;
+		}
+	}
+
+	rt_error(rt, "Key \"%s\" not found.", key);
+	return false;
 }
 
 /*
@@ -4179,7 +4244,8 @@ rt_visit_op(
  */
 
 static bool rt_intrin_len(struct rt_env *rt);
-static bool rt_intrin_remove(struct rt_env *rt);
+static bool rt_intrin_push(struct rt_env *rt);
+static bool rt_intrin_unset(struct rt_env *rt);
 static bool rt_intrin_resize(struct rt_env *rt);
 
 static bool
@@ -4192,7 +4258,10 @@ rt_register_intrinsics(
 		const char *param[HIR_PARAM_SIZE];
 		bool (*cfunc)(struct rt_env *rt);
 	} items[] = {
-		{"len", 1, {"obj"}, rt_intrin_len},
+		{"len", 1, {"val"}, rt_intrin_len},
+		{"push", 2, {"arr", "val"}, rt_intrin_push},
+		{"unset", 2, {"dict", "key"}, rt_intrin_unset},
+		{"resize", 2, {"arr", "size"}, rt_intrin_resize},
 	};
 	int i;
 
@@ -4215,7 +4284,7 @@ rt_intrin_len(
 {
 	struct rt_value val, ret;
 
-	if (!rt_get_local(rt, "obj", &val))
+	if (!rt_get_local(rt, "val", &val))
 		return false;
 
 	switch (val.type) {
@@ -4243,6 +4312,117 @@ rt_intrin_len(
 	}
 
 	if (!rt_set_local(rt, "$return", &ret))
+		return false;
+
+	return true;
+}
+
+/* push() */
+static bool
+rt_intrin_push(
+	struct rt_env *rt)
+{
+	struct rt_value arr, val;
+
+	if (!rt_get_local(rt, "arr", &arr))
+		return false;
+	if (!rt_get_local(rt, "val", &val))
+		return false;
+
+	switch (arr.type) {
+	case RT_VALUE_INT:
+	case RT_VALUE_FLOAT:
+	case RT_VALUE_FUNC:
+	case RT_VALUE_STRING:
+	case RT_VALUE_DICT:
+		rt_error(rt, "Not an array.");
+		break;
+	case RT_VALUE_ARRAY:
+		if (!rt_set_array_elem(rt, &arr, arr.val.arr->size, &val))
+			return false;
+		break;
+	default:
+		assert(NEVER_COME_HERE);
+		break;
+	}
+
+	if (!rt_set_local(rt, "$return", &arr))
+		return false;
+
+	return true;
+}
+
+/* unset() */
+static bool
+rt_intrin_unset(
+	struct rt_env *rt)
+{
+	struct rt_value arr, val;
+
+	if (!rt_get_local(rt, "dict", &arr))
+		return false;
+	if (!rt_get_local(rt, "key", &val))
+		return false;
+
+	switch (arr.type) {
+	case RT_VALUE_INT:
+	case RT_VALUE_FLOAT:
+	case RT_VALUE_FUNC:
+	case RT_VALUE_STRING:
+	case RT_VALUE_DICT:
+		rt_error(rt, "Not a dictionary.");
+		break;
+	case RT_VALUE_ARRAY:
+		break;
+	default:
+		assert(NEVER_COME_HERE);
+		break;
+	}
+
+	if (val.type != RT_VALUE_STRING) {
+		rt_error(rt, "Key not a string.");
+		return false;
+	}
+
+	if (!rt_remove_dict_elem(rt, &arr, val.val.str->s))
+		return false;
+
+	return true;
+}
+
+/* resize() */
+static bool
+rt_intrin_resize(
+	struct rt_env *rt)
+{
+	struct rt_value arr, size;
+
+	if (!rt_get_local(rt, "arr", &arr))
+		return false;
+	if (!rt_get_local(rt, "size", &size))
+		return false;
+
+	switch (arr.type) {
+	case RT_VALUE_INT:
+	case RT_VALUE_FLOAT:
+	case RT_VALUE_FUNC:
+	case RT_VALUE_STRING:
+	case RT_VALUE_DICT:
+		rt_error(rt, "Not an array.");
+		break;
+	case RT_VALUE_ARRAY:
+		break;
+	default:
+		assert(NEVER_COME_HERE);
+		break;
+	}
+
+	if (size.type != RT_VALUE_INT) {
+		rt_error(rt, "Size not an integer.");
+		return false;
+	}
+
+	if (!rt_resize_array(rt, &arr, size.val.i))
 		return false;
 
 	return true;

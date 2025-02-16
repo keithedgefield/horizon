@@ -27,8 +27,21 @@ func main() {
     array2[1] = 4;
     array2[2] = 5;
 
-    // Array reference
-    print("array1[0] = " + array1[0]);
+    // Array add
+    array3 = [];
+    push(array3, 123);
+    print(array3[0]);
+
+    // Array resize
+    print("before");
+    for (v in array2) {
+        print(v);
+    }
+    print("after");
+    resize(array2, 2);
+    for (v in array2) {
+        print(v);
+    }
 
     // Dictionary literal
     a = {
@@ -42,6 +55,16 @@ func main() {
     dict = {};
     dict["aaa"] = "value1";
     dict["bbb"] = 123;
+
+    // Dictionary remove
+    for (k, v in dict) {
+    	print("k = " + k + ", v = " + v);
+    }
+    print("unset");
+    unset(dict, "aaa");
+    for (k, v in dict) {
+    	print("k = " + k + ", v = " + v);
+    }
 
     // For-value loop
     for (v in array1) {
