@@ -47,6 +47,7 @@ enum hir_expr_type {
 	HIR_EXPR_CALL,
 	HIR_EXPR_THISCALL,
 	HIR_EXPR_ARRAY,
+	HIR_EXPR_DICT,
 };
 
 /* HIR Term Type */
@@ -64,6 +65,9 @@ enum hir_term_type {
 
 /* Maximum Elements of Array Literal */
 #define HIR_ARRAY_LITERAL_SIZE	32
+
+/* Maximum Key-Value Pairs of Dict Literal */
+#define HIR_DICT_LITERAL_SIZE	32
 
 /* Forward Declaration */
 struct hir_cfg_node;
@@ -239,6 +243,18 @@ struct hir_expr {
 			/* Element expressions. */
 			struct hir_expr *elem[HIR_ARRAY_LITERAL_SIZE];
 		} array;
+
+		/* Dictionary Literal Expression */
+		struct {
+			/* Key-value pair count. */
+			int kv_count;
+
+			/* Key strings. */
+			char *key[HIR_DICT_LITERAL_SIZE];
+
+			/* Value expressions. */
+			struct hir_expr *value[HIR_DICT_LITERAL_SIZE];
+		} dict;
 	} val;
 };
 

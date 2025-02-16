@@ -77,6 +77,7 @@ static bool hir_visit_dot_expr(struct hir_expr **hexpr, struct ast_expr *aexpr);
 static bool hir_visit_call_expr(struct hir_expr **hexpr, struct ast_expr *aexpr);
 static bool hir_visit_thiscall_expr(struct hir_expr **hexpr, struct ast_expr *aexpr);
 static bool hir_visit_array_expr(struct hir_expr **hexpr, struct ast_expr *aexpr);
+static bool hir_visit_dict_expr(struct hir_expr **hexpr, struct ast_expr *aexpr);
 static bool hir_visit_term(struct hir_term **hterm, struct ast_term *aterm);
 static bool hir_visit_param_list(struct hir_block *hfunc,struct ast_func *afunc);
 static void hir_free_block(struct hir_block *b);
@@ -1181,6 +1182,9 @@ hir_visit_expr(
 	case AST_EXPR_ARRAY:
 		result = hir_visit_array_expr(hexpr, aexpr);
 		break;
+	case AST_EXPR_DICT:
+		result = hir_visit_dict_expr(hexpr, aexpr);
+		break;
 	default:
 		assert(UNIMPLEMENTED);
 		break;
@@ -1470,12 +1474,73 @@ hir_visit_array_expr(
 				hir_free_expr(e);
 				return false;
 			}
-			elem = elem->next;
+
 			e->val.array.elem_count++;
 			if (e->val.array.elem_count > HIR_ARRAY_LITERAL_SIZE) {
 				hir_fatal(hir_error_line, "Exceeded the maximum argument count.");
 				return false;
 			}
+
+			elem = elem->next;
+		}
+	}
+
+	*hexpr = e;
+
+	return true;
+}
+
+/* Visit an AST dictionary expr. */
+static bool
+hir_visit_dict_expr(
+	struct hir_expr **hexpr,
+	struct ast_expr *aexpr)
+{
+	struct hir_expr *e;
+	struct ast_kv *kv;
+	int index;
+
+	assert(hexpr != NULL);
+	assert(*hexpr == NULL);
+	assert(aexpr != NULL);
+	assert(aexpr->type == AST_EXPR_DICT);
+
+	/* Allocate an hexpr. */
+	e = malloc(sizeof(struct hir_expr));
+	if (e == NULL) {
+		hir_out_of_memory();
+		return false;
+	}
+	memset(e, 0, sizeof(struct hir_expr));
+	e->type = HIR_EXPR_DICT;
+
+	/* Visit the argument expressions. */
+	if (aexpr->val.dict.kv_list != NULL) {
+		kv = aexpr->val.dict.kv_list->list;
+		while (kv != NULL) {
+			index = e->val.dict.kv_count;
+
+			/* Copy the key. */
+			e->val.dict.key[index] = strdup(kv->key);
+			if (e->val.dict.key[index] == NULL) {
+				hir_out_of_memory();
+				return false;
+			}
+
+			/* Copy the value. */
+			if (!hir_visit_expr(&e->val.dict.value[index], kv->value)) {
+				hir_free_expr(e);
+				return false;
+			}
+
+			/* Increment the key-value pair count. */
+			e->val.dict.kv_count++;
+			if (e->val.dict.kv_count > HIR_DICT_LITERAL_SIZE) {
+				hir_fatal(hir_error_line, "Exceeded the maximum argument count.");
+				return false;
+			}
+
+			kv = kv->next;
 		}
 	}
 
@@ -1775,6 +1840,18 @@ hir_free_expr(
 			if (e->val.array.elem[i] != NULL) {
 				hir_free_expr(e->val.array.elem[i]);
 				e->val.array.elem[i] = NULL;
+			}
+		}
+		break;
+	case HIR_EXPR_DICT:
+		for (i = 0; i < e->val.dict.kv_count; i++) {
+			if (e->val.dict.key[i] != NULL) {
+				free(e->val.dict.key[i]);
+				e->val.dict.key[i] = NULL;
+			}
+			if (e->val.dict.value[i] != NULL) {
+				hir_free_expr(e->val.dict.value[i]);
+				e->val.dict.value[i] = NULL;
 			}
 		}
 		break;

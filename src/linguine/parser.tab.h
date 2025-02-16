@@ -72,27 +72,29 @@ extern int ast_yydebug;
     TOKEN_LBLK = 273,              /* TOKEN_LBLK  */
     TOKEN_RBLK = 274,              /* TOKEN_RBLK  */
     TOKEN_SEMICOLON = 275,         /* TOKEN_SEMICOLON  */
-    TOKEN_DOT = 276,               /* TOKEN_DOT  */
-    TOKEN_COMMA = 277,             /* TOKEN_COMMA  */
-    TOKEN_IF = 278,                /* TOKEN_IF  */
-    TOKEN_ELSE = 279,              /* TOKEN_ELSE  */
-    TOKEN_WHILE = 280,             /* TOKEN_WHILE  */
-    TOKEN_FOR = 281,               /* TOKEN_FOR  */
-    TOKEN_IN = 282,                /* TOKEN_IN  */
-    TOKEN_DOTDOT = 283,            /* TOKEN_DOTDOT  */
-    TOKEN_GT = 284,                /* TOKEN_GT  */
-    TOKEN_GTE = 285,               /* TOKEN_GTE  */
-    TOKEN_LT = 286,                /* TOKEN_LT  */
-    TOKEN_LTE = 287,               /* TOKEN_LTE  */
-    TOKEN_EQ = 288,                /* TOKEN_EQ  */
-    TOKEN_NEQ = 289,               /* TOKEN_NEQ  */
-    TOKEN_RETURN = 290,            /* TOKEN_RETURN  */
-    TOKEN_BREAK = 291,             /* TOKEN_BREAK  */
-    TOKEN_CONTINUE = 292,          /* TOKEN_CONTINUE  */
-    TOKEN_ARROW = 293,             /* TOKEN_ARROW  */
-    TOKEN_AND = 294,               /* TOKEN_AND  */
-    TOKEN_OR = 295,                /* TOKEN_OR  */
-    UNARYMINUS = 296               /* UNARYMINUS  */
+    TOKEN_COLON = 276,             /* TOKEN_COLON  */
+    TOKEN_DOT = 277,               /* TOKEN_DOT  */
+    TOKEN_COMMA = 278,             /* TOKEN_COMMA  */
+    TOKEN_IF = 279,                /* TOKEN_IF  */
+    TOKEN_ELSE = 280,              /* TOKEN_ELSE  */
+    TOKEN_WHILE = 281,             /* TOKEN_WHILE  */
+    TOKEN_FOR = 282,               /* TOKEN_FOR  */
+    TOKEN_IN = 283,                /* TOKEN_IN  */
+    TOKEN_DOTDOT = 284,            /* TOKEN_DOTDOT  */
+    TOKEN_GT = 285,                /* TOKEN_GT  */
+    TOKEN_GTE = 286,               /* TOKEN_GTE  */
+    TOKEN_LT = 287,                /* TOKEN_LT  */
+    TOKEN_LTE = 288,               /* TOKEN_LTE  */
+    TOKEN_EQ = 289,                /* TOKEN_EQ  */
+    TOKEN_NEQ = 290,               /* TOKEN_NEQ  */
+    TOKEN_RETURN = 291,            /* TOKEN_RETURN  */
+    TOKEN_BREAK = 292,             /* TOKEN_BREAK  */
+    TOKEN_CONTINUE = 293,          /* TOKEN_CONTINUE  */
+    TOKEN_ARROW = 294,             /* TOKEN_ARROW  */
+    TOKEN_DARROW = 295,            /* TOKEN_DARROW  */
+    TOKEN_AND = 296,               /* TOKEN_AND  */
+    TOKEN_OR = 297,                /* TOKEN_OR  */
+    UNARYMINUS = 298               /* UNARYMINUS  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -115,8 +117,10 @@ union YYSTYPE
 	struct ast_expr *expr;
 	struct ast_term *term;
 	struct ast_arg_list *arg_list;
+	struct ast_kv_list *kv_list;
+	struct ast_kv *kv;
 
-#line 120 "src/linguine/parser.tab.h"
+#line 124 "src/linguine/parser.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -149,6 +153,6 @@ int ast_yyparse (void *scanner);
 
 #define YY_DECL int ast_yylex(void *yyscanner)
 
-#line 153 "src/linguine/parser.tab.h"
+#line 157 "src/linguine/parser.tab.h"
 
 #endif /* !YY_AST_YY_SRC_LINGUINE_PARSER_TAB_H_INCLUDED  */

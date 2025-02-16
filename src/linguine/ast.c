@@ -64,6 +64,8 @@ static void ast_free_param(struct ast_param *param);
 static void ast_free_stmt_list(struct ast_stmt_list *stmt_list);
 static void ast_free_stmt(struct ast_stmt *stmt);
 static void ast_free_expr(struct ast_expr *expr);
+static void ast_free_kv_list(struct ast_kv_list *kv_list);
+static void ast_free_kv(struct ast_kv *kv);
 static void ast_free_term(struct ast_term *term);
 static int ast_count_param_list(struct ast_param_list *param_list);
 static void ast_out_of_memory(void);
@@ -956,6 +958,66 @@ ast_accept_array_expr(
 	return expr;
 }
 
+/* Called from the parser when it accepted a expr with a dictionary literal syntax. */
+struct ast_expr *
+ast_accept_dict_expr(
+	struct ast_kv_list *kv_list)
+{
+	struct ast_expr *expr;
+
+	expr = malloc(sizeof(struct ast_expr));
+	if (expr == NULL) {
+		ast_out_of_memory();
+		return NULL;
+	}
+	memset(expr, 0, sizeof(struct ast_expr));
+	expr->type = AST_EXPR_DICT;
+	expr->val.dict.kv_list = kv_list;
+
+	return expr;
+}
+
+/* Called from the parser when it accepted a key-value list. */
+struct ast_kv_list *
+ast_accept_kv_list(
+	struct ast_kv_list *kv_list,
+	struct ast_kv *kv)
+{
+	if (kv_list == NULL) {
+		kv_list = malloc(sizeof(struct ast_kv_list));
+		if (kv_list == NULL) {
+			ast_out_of_memory();
+			return NULL;
+		}
+		memset(kv_list, 0, sizeof(struct ast_kv_list));
+	}
+
+	kv->next = kv_list->list;
+	kv_list->list = kv;
+
+	return kv_list;
+}
+
+/* Called from the parser when it accepted a key-value pair. */
+struct ast_kv *
+ast_accept_kv(
+	char *key,
+	struct ast_expr *value)
+{
+	struct ast_kv *kv;
+
+	kv = malloc(sizeof(struct ast_kv));
+	if (kv == NULL) {
+		ast_out_of_memory();
+		return NULL;
+	}
+	memset(kv, 0, sizeof(struct ast_kv));
+	kv->key = key;
+	kv->value = value;
+
+	return kv;
+}
+
 /* Called from the parser when it accepted a term with an integer. */
 struct ast_term *
 ast_accept_int_term(
@@ -1336,6 +1398,37 @@ ast_free_expr(
 
 	free(expr);
 	expr = NULL;
+}
+
+/* Free a key-value list. */
+static void
+ast_free_kv_list(
+	struct ast_kv_list *kv_list)
+{
+	ast_free_kv(kv_list->list);
+	kv_list->list = NULL;
+
+	free(kv_list);
+}
+
+/* Free a key-value pair. */
+static void
+ast_free_kv(
+	struct ast_kv *kv)
+{
+	if (kv->next != NULL) {
+		ast_free_kv(kv->next);
+		kv->next = NULL;
+	}
+
+	free(kv->key);
+	kv->key = NULL;
+
+	ast_free_expr(kv->value);
+	kv->value = NULL;
+
+	free(kv);
+	kv = NULL;
 }
 
 /* Free an AST term. */

@@ -138,6 +138,12 @@ extern YYLTYPE yylloc;
 			ast_yylloc.last_column += yyleng;
 			return TOKEN_SEMICOLON;
 		}
+":"		{
+			ast_yylloc.first_line = ast_yylloc.last_line;
+			ast_yylloc.first_column = ast_yylloc.last_column + 1;
+			ast_yylloc.last_column += yyleng;
+			return TOKEN_COLON;
+		}
 "\."		{
 			ast_yylloc.first_line = ast_yylloc.last_line;
 			ast_yylloc.first_column = ast_yylloc.last_column + 1;
@@ -149,6 +155,12 @@ extern YYLTYPE yylloc;
 			ast_yylloc.first_column = ast_yylloc.last_column + 1;
 			ast_yylloc.last_column += yyleng;
 			return TOKEN_ARROW;
+		}
+"=>"		{
+			ast_yylloc.first_line = ast_yylloc.last_line;
+			ast_yylloc.first_column = ast_yylloc.last_column + 1;
+			ast_yylloc.last_column += yyleng;
+			return TOKEN_DARROW;
 		}
 "func"		{
 			ast_yylloc.first_line = ast_yylloc.last_line;

@@ -48,17 +48,19 @@ extern void ast_yyerror(void *scanner, char *s);
 	struct ast_expr *expr;
 	struct ast_term *term;
 	struct ast_arg_list *arg_list;
+	struct ast_kv_list *kv_list;
+	struct ast_kv *kv;
 }
 
 %token <sval> TOKEN_SYMBOL TOKEN_STR
 %token <ival> TOKEN_INT
 %token <fval> TOKEN_FLOAT
-%token TOKEN_FUNC TOKEN_LARR TOKEN_RARR TOKEN_PLUS TOKEN_MINUS TOKEN_MUL TOKEN_DIV TOKEN_MOD
-%token TOKEN_ASSIGN TOKEN_LPAR TOKEN_RPAR TOKEN_LBLK TOKEN_RBLK
-%token TOKEN_SEMICOLON TOKEN_DOT TOKEN_COMMA TOKEN_IF TOKEN_ELSE
-%token TOKEN_WHILE TOKEN_FOR TOKEN_IN TOKEN_DOTDOT TOKEN_GT TOKEN_GTE TOKEN_LT
-%token TOKEN_LTE TOKEN_EQ TOKEN_NEQ TOKEN_RETURN TOKEN_BREAK TOKEN_CONTINUE 
-%token TOKEN_ARROW TOKEN_AND TOKEN_OR
+%token TOKEN_FUNC TOKEN_LARR TOKEN_RARR TOKEN_PLUS TOKEN_MINUS TOKEN_MUL
+%token TOKEN_DIV TOKEN_MOD TOKEN_ASSIGN TOKEN_LPAR TOKEN_RPAR TOKEN_LBLK
+%token TOKEN_RBLK TOKEN_SEMICOLON TOKEN_COLON TOKEN_DOT TOKEN_COMMA TOKEN_IF
+%token TOKEN_ELSE TOKEN_WHILE TOKEN_FOR TOKEN_IN TOKEN_DOTDOT TOKEN_GT
+%token TOKEN_GTE TOKEN_LT TOKEN_LTE TOKEN_EQ TOKEN_NEQ TOKEN_RETURN TOKEN_BREAK
+%token TOKEN_CONTINUE TOKEN_ARROW TOKEN_DARROW TOKEN_AND TOKEN_OR
 
 %type <func_list> func_list;
 %type <func> func;
@@ -76,6 +78,8 @@ extern void ast_yyerror(void *scanner, char *s);
 %type <stmt> break_stmt;
 %type <stmt> continue_stmt;
 %type <expr> expr;
+%type <kv_list> kv_list;
+%type <kv> kv;
 %type <term> term;
 %type <arg_list> arg_list;
 
@@ -441,6 +445,11 @@ expr		: term
 			$$ = ast_accept_array_expr($2);
 			debug("expr: array");
 		}
+		| TOKEN_LBLK kv_list TOKEN_RBLK
+		{
+			$$ = ast_accept_dict_expr($2);
+			debug("expr: dict");
+		}
 		;
 arg_list	: expr
 		{
@@ -450,7 +459,29 @@ arg_list	: expr
 		| arg_list TOKEN_COMMA expr
 		{
 			$$ = ast_accept_arg_list($1, $3);
-			debug("arg_list: arg_list param_list");
+			debug("arg_list: arg_list arg");
+		}
+		;
+kv_list		: kv
+		{
+			$$ = ast_accept_kv_list(NULL, $1);
+			debug("kv_list: kv");
+		}
+		| kv_list TOKEN_COMMA kv
+		{
+			$$ = ast_accept_kv_list($1, $3);
+			debug("kv_list: kv_list kv");
+		}
+		;
+kv		: TOKEN_STR TOKEN_COLON expr
+		{
+			$$ = ast_accept_kv($1, $3);
+			debug("kv");
+		}
+		| TOKEN_SYMBOL TOKEN_COLON expr
+		{
+			$$ = ast_accept_kv($1, $3);
+			debug("kv");
 		}
 		;
 term		: TOKEN_INT

@@ -29,15 +29,23 @@ func main() {
     // Array reference
     print("array1[0] = " + array1[0]);
 
+    // Dictionary literal
+    a = {
+        "aaa": "bbb",
+        ccc: "ddd"
+    };
+    print(a.aaa);
+    print(a["ccc"]);
+
+    // Dictionary assignment
+    dict = {};
+    dict["aaa"] = "value1";
+    dict["bbb"] = 123;
+
     // For-value loop
     for (v in array1) {
         print("v = " + v);
     }
-
-    // Dictionary
-    dict = {};
-    dict["aaa"] = "value1";
-    dict["bbb"] = 123;
 
     // For-key-value loop
     for (k, v in dict) {

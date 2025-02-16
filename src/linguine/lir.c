@@ -85,6 +85,7 @@ static bool lir_visit_dot_expr(int dst_tmpvar, struct hir_expr *expr);
 static bool lir_visit_call_expr(int dst_tmpvar, struct hir_expr *expr);
 static bool lir_visit_thiscall_expr(int dst_tmpvar, struct hir_expr *expr);
 static bool lir_visit_array_expr(int dst_tmpvar, struct hir_expr *expr);
+static bool lir_visit_dict_expr(int dst_tmpvar, struct hir_expr *expr);
 static bool lir_visit_term(int dst_tmpvar, struct hir_term *term);
 static bool lir_visit_symbol_term(int dst_tmpvar, struct hir_term *term);
 static bool lir_visit_int_term(int dst_tmpvar, struct hir_term *term);
@@ -910,6 +911,11 @@ lir_visit_expr(
 		if (!lir_visit_array_expr(dst_tmpvar, expr))
 			return false;
 		break;
+	case HIR_EXPR_DICT:
+		/* For a dictionary expression. */
+		if (!lir_visit_dict_expr(dst_tmpvar, expr))
+			return false;
+		break;
 	default:
 		assert(NEVER_COME_HERE);
 		abort();
@@ -1188,7 +1194,6 @@ lir_visit_array_expr(
 	struct hir_expr *expr)
 {
 	int elem_count;
-	int array_tmpvar;
 	int elem_tmpvar;
 	int index_tmpvar;
 	int i;
@@ -1235,6 +1240,66 @@ lir_visit_array_expr(
 
 	lir_decrement_tmpvar(index_tmpvar);
 	lir_decrement_tmpvar(elem_tmpvar);
+
+	return true;
+}
+
+static bool
+lir_visit_dict_expr(
+	int dst_tmpvar,
+	struct hir_expr *expr)
+{
+	int kv_count;
+	int key_tmpvar;
+	int value_tmpvar;
+	int index_tmpvar;
+	int i;
+
+	assert(expr != NULL);
+	assert(expr->type == HIR_EXPR_DICT);
+	assert(expr->val.dict.kv_count > 0);
+	assert(expr->val.dict.kv_count < HIR_DICT_LITERAL_SIZE);
+
+	kv_count = expr->val.dict.kv_count;
+	
+	/* Create a dictionary. */
+	if (!lir_put_opcode(LOP_DCONST))
+		return false;
+	if (!lir_put_tmpvar(dst_tmpvar))
+		return false;
+
+	/* Push the elements. */
+	if (!lir_increment_tmpvar(&key_tmpvar))
+		return false;
+	if (!lir_increment_tmpvar(&value_tmpvar))
+		return false;
+	if (!lir_increment_tmpvar(&index_tmpvar))
+		return false;
+	for (i = 0; i < kv_count; i++) {
+		/* Visit the element. */
+		if (!lir_visit_expr(value_tmpvar, expr->val.dict.value[i]))
+			return false;
+
+		/* Add to the dict. */
+		if (!lir_put_opcode(LOP_SCONST))
+			return false;
+		if (!lir_put_tmpvar(key_tmpvar))
+			return false;
+		if (!lir_put_string(expr->val.dict.key[i]))
+			return false;
+		if (!lir_put_opcode(LOP_STOREARRAY))
+			return false;
+		if (!lir_put_tmpvar(dst_tmpvar))
+			return false;
+		if (!lir_put_tmpvar(key_tmpvar))
+			return false;
+		if (!lir_put_tmpvar(value_tmpvar))
+			return false;
+	}
+
+	lir_decrement_tmpvar(index_tmpvar);
+	lir_decrement_tmpvar(value_tmpvar);
+	lir_decrement_tmpvar(key_tmpvar);
 
 	return true;
 }
