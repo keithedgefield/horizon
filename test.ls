@@ -53,8 +53,16 @@ func main() {
     }
 
     // Lambda
-    f = lambda (a) { return a; };
+    f = lambda (a) => { return a; };
     print("f(1) = " + f(1));
+
+    // Class-like
+    myclass = {
+        foo: lambda () => {
+	},
+	bar: lambda () => {
+	}
+    };
 }
 
 func foo() {
