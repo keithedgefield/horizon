@@ -9,8 +9,8 @@
  * A header to mitigate compiler differences.
  */
 
-#ifndef HORIZON_TYPES_H
-#define HORIZON_TYPES_H
+#ifndef HORIZON_CONFIG_H
+#define HORIZON_CONFIG_H
 
 /*
  * Here we define a macro that indicates a target platform.
@@ -23,7 +23,6 @@
  * |TARGET_IOS      |iOS                   |
  * |TARGET_ANDROID  |Android NDK           |
  * |TARGET_WASM     |Wasm (Emscripten)     |
- * |TARGET_UNITY    |Unity                 |
  */
 
 /* Windows */
@@ -35,7 +34,7 @@
 #if defined(__APPLE__) && __has_include(<TargetConditionals.h>)
 #include <TargetConditionals.h>
 #if !defined(TARGET_OS_IPHONE)
-#define TARGET_IOS
+#define TARGET_MACOS
 #endif
 #endif
 
@@ -62,19 +61,13 @@
 #define TARGET_WASM
 #endif
 
-/* Unity */
-#if defined(USE_UNITY)
-#define TARGET_UNITY
-#endif
-
 /* Error: No target detected. */
 #if !defined(TARGET_WINDOWS) && \
     !defined(TARGET_MACOS) &&   \
     !defined(TARGET_LINUX) &&   \
     !defined(TARGET_IOS) &&     \
     !defined(TARGET_ANDROID) && \
-    !defined(TARGET_WASM) &&    \
-    !defined(TARGET_UNITY)
+    !defined(TARGET_WASM)
 #error "No target detected."
 #endif
 
@@ -197,5 +190,23 @@
 #define INOUT
 
 #endif /* End of MSVC */
+
+/*
+ * Byteorder
+ */
+
+#define HOSTTOLE64(d)	(d)
+#define HOSTTOLE32(d)	(d)
+#define HOSTTOLE16(d)	(d)
+
+#define LETOHOST64(d)	(d)
+#define LETOHOST32(d)	(d)
+#define LETOHOST16(d)	(d)
+
+/*
+ * Message Translation
+ */
+
+#define _(text)		text
 
 #endif

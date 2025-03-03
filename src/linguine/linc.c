@@ -19,6 +19,8 @@
 #include <stdbool.h>
 #include <unistd.h>
 
+const char lsc_header[] = "Linguine Bytecode";
+
 const char version[] =
 	"Linguine compiler version 0.0.1\n";
 
@@ -33,20 +35,27 @@ const char options[] =
 	"p";	/* Generate C project (implies -c) */
 
 extern const char source_runtime_h[];
-__asm__(
-	".global source_runtime_h\n"
-	"source_runtime_h:\n"
-	".incbin \"linguine/runtime.h\"\n"
-	".byte 0\n");
 
-extern const char source_runtime_c[];
-__asm__(
-	".global source_runtime_c\n"
-	"source_runtime_c:\n"
-	".incbin \"linguine/runtime.c\"\n"
-	".byte 0\n");
+#if !defined(TARGET_MACOS)
+#define INCLUDE_BIN_FILE(symbol, file) \
+	extern const char symbol[]; \
+	__asm__(".global " #symbol "\n" \
+		#symbol ":\n" \
+		".incbin \"" file "\"\n" \
+		".byte 0\n");
+#else
+#define INCLUDE_BIN_FILE(symbol, file) \
+	extern const char symbol[]; \
+	__asm__(".global _" #symbol "\n" \
+		"_" #symbol ":\n" \
+		".incbin \"" file "\"\n" \
+		".byte 0\n");
+#endif
 
-bool opt_bytecode_backend;
+INCLUDE_BIN_FILE(source_runtime_h, "linguine/runtime.h");
+INCLUDE_BIN_FILE(source_runtime_c, "linguine/runtime.c");
+
+bool opt_bytecode_backend = true;
 bool opt_c_backend;
 bool opt_generate_project;
 const char *opt_source;
@@ -61,17 +70,12 @@ static void generate_c_main(void);
 
 int main(int argc, char *argv[])
 {
-	printf("%s\n", source_runtime_h);
-
 	parse_options(argc, argv);
 
 	load_source_file();
 
 	if (opt_bytecode_backend) {
 		compile_to_bytecode();
-	}
-
-	if (opt_c_backend) {
 	}
 
 	return 0;
@@ -165,9 +169,9 @@ static void compile_to_bytecode(void)
 		       hir_get_error_message());
 		exit(1);
 	}
+	func_count = hir_get_function_count();
 
 	/* For each function. */
-	func_count = hir_get_function_count();
 	for (i = 0; i < func_count; i++) {
 		/* Transform HIR to LIR (bytecode). */
 		hfunc = hir_get_function(i);
@@ -179,7 +183,7 @@ static void compile_to_bytecode(void)
 			exit(1);
 		}
 
-		/* TODO: put lsc file body. */
+		/* TODO: Put bytecode to a file. */
 
 		/* Free a LIR. */
 		lir_free(lfunc);

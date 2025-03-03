@@ -1,240 +1,81 @@
-#include "config.h"
-#include "linguine/runtime.h"
+/* -*- coding: utf-8; tab-width: 8; indent-tabs-mode: t; -*- */
 
-#include <stdio.h>
-#include <signal.h>
+/*
+ * Horizon
+ * Copyright (c) 2024, 2025, The Horizon Authors. All rights reserved.
+ */
 
-/* Scripting runtime. */
-struct rt_env *rt;
+/*
+ * main.c: The main process of the engine.
+ */
 
-/* Renderer name. */
-struct rt_func *renderer;
+#include "hal/hal.h"
 
-/* Is ctrl-c pressed? */
-volatile bool is_stopped;
+static struct render_pipeline *pipeline;
+static struct render_vertex_buffer *vertex_buffer;
+static struct render_index_buffer *index_buffer;
 
-/* Temporary file content storage. */
-char file_text[65536];
-
-/* Forward declaration. */
-static void sigint_handler(int signal);
-static bool load_engine_object(struct rt_env *rt);
-static bool load_main_script(struct rt_env *rt);
-static bool load_file(const char *file_name);
-static bool call_main(struct rt_env *rt);
-static bool get_renderer(struct rt_env *rt);
-static bool call_renderer(struct rt_env *rt);
-static void print_error(struct rt_env *rt);
-static bool engine_print(struct rt_env *rt);
-
-int main(int argc, char *argv[])
+/*
+ * Called after the "file" initializain and before the "render" initialization.
+ */
+bool on_hal_init_render(char **title, int *width, int *height)
 {
-	struct rt_value ret;
-
-	signal(SIGINT, sigint_handler);
-
-	/* Create a scripting runtime. */
-	if (!rt_create(&rt)) {
-		printf("Error.\n");
-		return 1;
-	}
-
-	/* Load "Engine" object. */
-	if (!load_engine_object(rt))
-		return false;
-
-	/* Load the main script. */
-	if (!load_main_script(rt))
-		return false;
-
-	/* Call main(). */
-	if (!call_main(rt))
-		return false;
-
-	/* Get a renderer function name. */
-	if (!get_renderer(rt))
-		return false;
-
-	/* Call OnFrame() until Control-C is pressed. */
-	if (!call_renderer(rt))
-		return false;
-
-	/* Cleanup the scripting runtime. */
-	rt_destroy(rt);
-}
-
-static void sigint_handler(int sig)
-{
-	is_stopped = true;
-}
-
-static bool load_engine_object(struct rt_env *rt)
-{
-	struct rt_value engine;
-	int i;
-	struct item {
-		const char *global_name;
-		const char *key_name;
-		int param_count;
-		const char *param_name[16];
-		bool (*cfunc)(struct rt_env *env);
-	} item[] = {
-		{"Engine_print", "print", 1, {"msg"}, engine_print},
-	};
-
-	/* Make a dictionary. */
-	if (!rt_make_empty_dict(rt, &engine))
-		return false;
-
-	/* Assign the dictionary to a global variable "Engine". */
-	if (!rt_set_global(rt, "Engine", &engine))
-		return false;
-
-	/* For each entry, register a C function,. */
-	for (i = 0; i < sizeof(item) / sizeof(struct item); i++) {
-		struct rt_value func_val;
-
-		/* Register a C function as a global variable. */
-		if (!rt_register_cfunc(rt, item[i].global_name, item[i].param_count, item[i].param_name, item[i].cfunc))
-			return false;
-
-		/* Put the function to the dictionary. */
-		if (!rt_get_global(rt, item[i].global_name, &func_val))
-			return false;
-		if (!rt_set_dict_elem(rt, &engine, item[i].key_name, &func_val))
-			return false;
-	}
+	*title = strdup("Hello");
+	*width = 640;
+	*height = 480;
 
 	return true;
 }
 
-static bool load_main_script(struct rt_env *rt)
+/*
+ * Called after the whole HAL initialization and before the game loop.
+ */
+bool on_hal_ready(void)
 {
-	if (!load_file("main.ls"))
+	render_begin_pipeline();
+
+	render_add_vertex_shader_input("vec3", "a_pos", RENDER_POSITION0);
+	render_add_pixel_shader_input("vec4", "v_pos", RENDER_SVPOSITION);
+
+	render_begin_vertex_shader();
+	render_vertex_shader_assign_input("vec3", "pos", "a_pos");
+	render_vertex_shader_assign_output("v_pos", "vec4(pos.x, pos.y, pos.z, 1.0)");
+	render_end_vertex_shader();
+
+	render_begin_pixel_shader();
+	render_pixel_shader_return("vec4(1.0, 1.0, 1.0, 1.0)");
+	render_end_pixel_shader();
+
+	if (!render_end_pipeline(&pipeline))
 		return false;
 
-	/* Compile. */
-	if (!rt_register_source(rt, "main.ls", file_text)) {
-		print_error(rt);
-		return false;
-	}
+	render_bind_pipeline(pipeline);
+
+	float vertices[12] = {0, 0, 0,   0.5, 0, 0,   0.5, 0.5, 0,   0, 0.5, 0};
+	render_create_vertex_buffer(12, &vertex_buffer);
+	render_bind_vertex_buffer(vertex_buffer);
+	render_upload_vertex_buffer(vertex_buffer, vertices);
+
+	render_create_index_buffer(4, &index_buffer);
+	render_bind_index_buffer(index_buffer);
+
+	short indices[4] = {0, 1, 2, 3};
+	render_upload_index_buffer(index_buffer, indices);
 
 	return true;
 }
 
-static bool load_file(const char *file_name)
+/*
+ * Called every frame.
+ */
+bool on_hal_frame(void)
 {
-	FILE *fp;
-	size_t len;
-
-	fp = fopen(file_name, "rb");
-	if (fp == NULL) {
-		printf("Cannot open file.\n");
-		return false;
-	}
-
-	len = fread(file_text, 1, sizeof(file_text) - 1, fp);
-	if (len == 0) {
-		printf("Cannot read the file.\n");
-		return false;
-	}
-
-	/* Terminate the string. */
-	file_text[len] = '\0';
-
-	fclose(fp);
-
-	return true;
-}
-
-static bool call_main(struct rt_env *rt)
-{
-	struct rt_value ret;
-
-	if (!rt_call_with_name(rt, "main", NULL, 0, NULL, &ret)) {
-		print_error(rt);
-		return false;
-	}
-
-	rt_shallow_gc(rt);
-
-	return true;
-}
-
-static bool get_renderer(struct rt_env *rt)
-{
-	struct rt_value dict, elem;
-
-	if (!rt_get_global(rt, "Engine", &dict))
-		return false;
-
-	if (!rt_get_dict_elem(rt, &dict, "renderer", &elem)) {
-		printf("Engine.renderer not defined.\n");
-		return false;
-	}
-
-	if (!rt_get_func(rt, &elem, &renderer))
-		return false;
-
-	return true;
-}
-
-static bool call_renderer(struct rt_env *rt)
-{
-	struct rt_value ret;
-
-	if (!rt_call(rt, renderer, NULL, 0, NULL, &ret)) {
-		print_error(rt);
-		return false;
-	}
-
-	rt_shallow_gc(rt);
-
-	return true;
-}
-
-static void print_error(struct rt_env *rt)
-{
-	printf("%s:%d: error: %s\n",
-	       rt_get_error_file(rt),
-	       rt_get_error_line(rt),
-	       rt_get_error_message(rt));
-}
-
-static bool engine_print(struct rt_env *rt)
-{
-	struct rt_value msg;
-	const char *s;
-	float f;
-	int i;
-	int type;
-
-	if (!rt_get_local(rt, "msg", &msg))
-		return false;
-
-	if (!rt_get_value_type(rt, &msg, &type))
-		return false;
-
-	switch (type) {
-	case RT_VALUE_INT:
-		if (!rt_get_int(rt, &msg, &i))
-			return false;
-		printf("%i\n", i);
-		break;
-	case RT_VALUE_FLOAT:
-		if (!rt_get_float(rt, &msg, &f))
-			return false;
-		printf("%f\n", f);
-		break;
-	case RT_VALUE_STRING:
-		if (!rt_get_string(rt, &msg, &s))
-			return false;
-		printf("%s\n", s);
-		break;
-	default:
-		printf("[object]\n");
-		break;
-	}
+	render_begin_frame();
+	render_bind_pipeline(pipeline);
+	render_bind_vertex_buffer(vertex_buffer);
+	render_bind_index_buffer(index_buffer);
+	render_draw_triangle_strip(0, 4);
+	render_end_frame();
 
 	return true;
 }

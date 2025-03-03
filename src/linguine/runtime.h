@@ -106,6 +106,21 @@ struct rt_env {
 
 	/* Error message. */
 	char error_message[4096];
+
+#if defined(CONF_DEBUGGER)
+	/* Last file and line. */
+	char dbg_last_file_name[1024];
+	int dbg_last_line;
+
+	/* Stop flag. */
+	volatile bool dbg_stop_flag;
+
+	/* Single step flag. */
+	bool dbg_single_step_flag;
+
+	/* Error flag. */
+	bool dbg_error_flag;
+#endif
 };
 
 /* Calling frame. */

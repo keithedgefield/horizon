@@ -64,6 +64,10 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
+#if defined(CONF_DEBUGGER)
+	rt->dbg_stop_flag = true;
+#endif
+
 	/* Run the main function. */
 	if (!rt_call_with_name(rt, "main", NULL, 0, NULL, &ret)) {
 		print_error(rt);

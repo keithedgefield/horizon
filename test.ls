@@ -80,13 +80,35 @@ func main() {
     f = lambda (a) => { return a; };
     print("f(1) = " + f(1));
 
-    // Class-like
+    //
+    // Objective-like Practice
+    //
+
+    // Class definition (this is just a dictionary, you know)
     myclass = {
-        foo: lambda () => {
-	},
-	bar: lambda () => {
-	}
+        // Constructor
+        new: lambda () => {
+            obj = {};
+	    obj.value = 0;
+
+            // mixin() copies and injects functions of myclass to obj excluding new()
+            mixin(obj, myclass);
+
+            return obj;
+        },
+
+        // Method
+        getValue: lambda (this) => {
+            // Parameter "this" is same as "self" in Python.
+            return this.value;
+        }
     };
+
+    // New
+    obj = myclass.new();
+
+    // Method call
+    val = obj->getValue();  // equals to obj.getValue(obj);
 }
 
 func foo() {

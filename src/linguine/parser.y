@@ -21,6 +21,59 @@ extern int ast_error_column;
 
 int ast_yylex(void *);
 void ast_yyerror(void *, char *s);
+
+/* Internal: called back from the parser. */
+struct ast_func_list *ast_accept_func_list(struct ast_func_list *impl_list, struct ast_func *func);
+struct ast_func *ast_accept_func(char *name, struct ast_param_list *param_list, struct ast_stmt_list *stmt_list);
+struct ast_param_list *ast_accept_param_list(struct ast_param_list *param_list, char *name);
+struct ast_stmt_list *ast_accept_stmt_list(struct ast_stmt_list *stmt_list, struct ast_stmt *stmt);
+void ast_accept_stmt(struct ast_stmt *stmt, int line);
+struct ast_stmt *ast_accept_empty_stmt(void);
+struct ast_stmt *ast_accept_expr_stmt(struct ast_expr *expr);
+struct ast_stmt *ast_accept_assign_stmt(struct ast_expr *lhs, struct ast_expr *rhs);
+struct ast_stmt *ast_accept_if_stmt(struct ast_expr *cond, struct ast_stmt_list *stmt_list);
+struct ast_stmt *ast_accept_elif_stmt(struct ast_expr *cond, struct ast_stmt_list *stmt_list);
+struct ast_stmt *ast_accept_else_stmt(struct ast_stmt_list *stmt_list);
+struct ast_stmt *ast_accept_while_stmt(struct ast_expr *cond, struct ast_stmt_list *stmt_list);
+struct ast_stmt *ast_accept_for_kv_stmt(char *key_sym, char *val_sym, struct ast_expr *array, struct ast_stmt_list *stmt_list);
+struct ast_stmt *ast_accept_for_v_stmt(char *iter_sym, struct ast_expr *array, struct ast_stmt_list *stmt_list);
+struct ast_stmt *ast_accept_for_range_stmt(char *counter_sym, struct ast_expr *start, struct ast_expr *stop, struct ast_stmt_list *stmt_list);
+struct ast_stmt *ast_accept_return_stmt(struct ast_expr *expr);
+struct ast_stmt *ast_accept_break_stmt(void);
+struct ast_stmt *ast_accept_continue_stmt(void);
+struct ast_expr *ast_accept_term_expr(struct ast_term *term);
+struct ast_expr *ast_accept_lt_expr(struct ast_expr *expr1, struct ast_expr *expr2);
+struct ast_expr *ast_accept_lte_expr(struct ast_expr *expr1, struct ast_expr *expr2);
+struct ast_expr *ast_accept_gt_expr(struct ast_expr *expr1, struct ast_expr *expr2);
+struct ast_expr *ast_accept_gte_expr(struct ast_expr *expr1, struct ast_expr *expr2);
+struct ast_expr *ast_accept_eq_expr(struct ast_expr *expr1, struct ast_expr *expr2);
+struct ast_expr *ast_accept_neq_expr(struct ast_expr *expr1, struct ast_expr *expr2);
+struct ast_expr *ast_accept_plus_expr(struct ast_expr *expr1, struct ast_expr *expr2);
+struct ast_expr *ast_accept_minus_expr(struct ast_expr *expr1, struct ast_expr *expr2);
+struct ast_expr *ast_accept_mul_expr(struct ast_expr *expr1, struct ast_expr *expr2);
+struct ast_expr *ast_accept_div_expr(struct ast_expr *expr1, struct ast_expr *expr2);
+struct ast_expr *ast_accept_mod_expr(struct ast_expr *expr1, struct ast_expr *expr2);
+struct ast_expr *ast_accept_and_expr(struct ast_expr *expr1, struct ast_expr *expr2);
+struct ast_expr *ast_accept_or_expr(struct ast_expr *expr1, struct ast_expr *expr2);
+struct ast_expr *ast_accept_neg_expr(struct ast_expr *expr);
+struct ast_expr *ast_accept_par_expr(struct ast_expr *expr);
+struct ast_expr *ast_accept_subscr_expr(struct ast_expr *expr1, struct ast_expr *expr2);
+struct ast_expr *ast_accept_dot_expr(struct ast_expr *obj, char *symbol);
+struct ast_expr *ast_accept_call_expr(struct ast_expr *func, struct ast_arg_list *arg_list);
+struct ast_expr *ast_accept_thiscall_expr(struct ast_expr *obj, char *func, struct ast_arg_list *arg_list);
+struct ast_expr *ast_accept_array_expr(struct ast_arg_list *arg_list);
+struct ast_expr *ast_accept_dict_expr(struct ast_kv_list *kv_list);
+struct ast_expr *ast_accept_func_expr(struct ast_param_list *param_list, struct ast_stmt_list *stmt_list);
+struct ast_kv_list *ast_accept_kv_list(struct ast_kv_list *kv_list, struct ast_kv *kv);
+struct ast_kv *ast_accept_kv(char *key, struct ast_expr *value);
+struct ast_term *ast_accept_int_term(int i);
+struct ast_term *ast_accept_float_term(float f);
+struct ast_term *ast_accept_str_term(char *s);
+struct ast_term *ast_accept_symbol_term(char *symbol);
+struct ast_term *ast_accept_empty_array_term(void);
+struct ast_term *ast_accept_empty_dict_term(void);
+struct ast_arg_list *ast_accept_arg_list(struct ast_arg_list *arg_list, struct ast_expr *expr);
+
 %}
 
 %{
@@ -147,12 +200,12 @@ func		: TOKEN_FUNC TOKEN_SYMBOL TOKEN_LPAR param_list TOKEN_RPAR TOKEN_LBLK stmt
 param_list	: TOKEN_SYMBOL
 		{
 			$$ = ast_accept_param_list(NULL, $1);
-			debug("param_list: type symbol");
+			debug("param_list: symbol");
 		}
 		| param_list TOKEN_COMMA TOKEN_SYMBOL
 		{
 			$$ = ast_accept_param_list($1, $3);
-			debug("param_list: param_list type symbol");
+			debug("param_list: param_list symbol");
 		}
 		;
 stmt_list	: stmt

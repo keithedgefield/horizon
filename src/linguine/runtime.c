@@ -11,12 +11,13 @@
 
 /*
  * [configuration]
- *  - CONF_RUNTIME_ONLY ... No source compilation features.
+ *  - CONF_NO_COMPILATION ... No source compilation features.
+ *  - CONF_DEBUGGER       ... gdb-like debugger feature.
  */
 
 #include "runtime.h"
 
-#if !defined(CONF_RUNTIME_ONLY)
+#if !defined(CONF_NO_COMPILATION)
 #include "ast.h"
 #include "hir.h"
 #include "lir.h"
@@ -55,6 +56,11 @@ static bool rt_find_global(struct rt_env *rt, const char *name, struct rt_bindgl
 static void rt_error(struct rt_env *rt, const char *msg, ...);
 static void rt_out_of_memory(struct rt_env *rt);
 static bool rt_register_intrinsics(struct rt_env *rt);
+
+#if defined(CONF_DEBUGGER)
+void dbg_pre_hook(struct rt_env *rt);
+void dbg_post_hook(struct rt_env *rt);
+#endif
 
 /*
  * Create a runtime environment.
@@ -1692,8 +1698,23 @@ rt_visit_bytecode(
 
 	pc = 0;
 	while (pc < func->bytecode_size) {
-		if (!rt_visit_op(rt, func, &pc))
+#if defined(CONF_DEBUGGER)
+		dbg_pre_hook(rt);
+#endif
+
+		if (!rt_visit_op(rt, func, &pc)) {
+#if defined(CONF_DEBUGGER)
+			rt->dbg_stop_flag = true;
+			rt->dbg_error_flag = true;
+			return true;
+#else
 			return false;
+#endif
+		}
+
+#if defined(CONF_DEBUGGER)
+		dbg_post_hook(rt);
+#endif
 	}
 
 	return true;
@@ -4453,4 +4474,3 @@ rt_out_of_memory(
 {
 	rt_error(rt, "Out of memory.");
 }
-

@@ -1,2 +1,5 @@
 .*
 *~
+*.o
+
+build/linux/libroot
