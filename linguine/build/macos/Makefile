@@ -1,0 +1,109 @@
+CC=cc
+LD=ld
+AR=ar
+YACC=bison
+LEX=flex
+
+CPPFLAGS=-I../../src -DUSE_JIT
+CFLAGS=-O0 -g3
+LDFLAGS=-lm
+
+OBJS=\
+	parser.tab.o \
+	lexer.yy.o \
+	ast.o \
+	hir.o \
+	lir.o \
+	runtime.o
+
+all: linguine
+
+#
+# These targets are Universal Binary objects.
+#
+
+linguine: command.o liblinguine.a
+	$(CC) -o linguine $(CFLAGS) $^
+
+command.o: ../../src/command.c
+	$(CC) -c -arch arm64 -arch x86_64 -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
+#
+# Archiving Universal Binary objects by the ar command is not supported.
+# Let's make a Universal Binary archive by fusing two architecture-specific archives.
+#
+liblinguine.a: liblinguine-arm64.a liblinguine-x86_64.a
+	lipo -create liblinguine-arm64.a liblinguine-x86_64.a -output liblinguine.a
+
+#
+# The following are for arm64 architecture-specific.
+#
+
+liblinguine-arm64.a: parser-arm64.tab.o lexer-arm64.yy.o ast-arm64.o hir-arm64.o lir-arm64.o runtime-arm64.o jit-arm64.o
+	$(AR) rcs $@ $^
+
+parser-arm64.tab.o: ../../src/parser.tab.c
+	$(CC) -c -arch arm64 -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
+lexer-arm64.yy.o: ../../src/lexer.yy.c
+	$(CC) -c -arch arm64 -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
+ast-arm64.o: ../../src/ast.c
+	$(CC) -c -arch arm64 -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
+hir-arm64.o: ../../src/hir.c
+	$(CC) -c -arch arm64 -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
+lir-arm64.o: ../../src/lir.c
+	$(CC) -c -arch arm64 -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
+runtime-arm64.o: ../../src/runtime.c
+	$(CC) -c -arch arm64 -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
+jit-arm64.o: ../../src/jit-arm64.c
+	$(CC) -c -arch arm64 -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
+#
+# The following are for x86_64.
+#
+
+liblinguine-x86_64.a: parser-x86_64.tab.o lexer-x86_64.yy.o ast-x86_64.o hir-x86_64.o lir-x86_64.o runtime-x86_64.o jit-x86_64.o
+	$(AR) rcs $@ $^
+
+parser-x86_64.tab.o: ../../src/parser.tab.c
+	$(CC) -c -arch x86_64 -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
+lexer-x86_64.yy.o: ../../src/lexer.yy.c
+	$(CC) -c -arch x86_64 -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
+ast-x86_64.o: ../../src/ast.c
+	$(CC) -c -arch x86_64 -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
+hir-x86_64.o: ../../src/hir.c
+	$(CC) -c -arch x86_64 -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
+lir-x86_64.o: ../../src/lir.c
+	$(CC) -c -arch x86_64 -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
+runtime-x86_64.o: ../../src/runtime.c
+	$(CC) -c -arch x86_64 -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
+jit-x86_64.o: ../../src/jit-x86_64.c
+	$(CC) -c -arch x86_64 -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
+#
+# The following are not architecture-specific.
+#
+
+../../src/parser.tab.c: ../../src/parser.y
+	$(YACC) -Wcounterexamples -d -p ast_yy -o ../../src/parser.tab.c ../../src/parser.y
+
+../../src/lexer.yy.c: ../../src/lexer.l
+	$(LEX) -o ../../src/lexer.yy.c --prefix=ast_yy ../../src/lexer.l
+
+#
+# Phony.
+#
+
+clean:
+	rm -rf *.o *.a linguine
