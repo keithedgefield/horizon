@@ -6,7 +6,7 @@
  */
 
 /*
- * JIT: Just-In-Time native code generation
+ * JIT (arm64): Just-In-Time native code generation
  */
 
 #include "compat.h"		/* ARCH_ARM64 */
@@ -63,7 +63,7 @@ struct jit_context {
 	/* Exception handler. */
 	uint32_t *exception_code;
 
-	/* Code top LIR PC. */
+	/* Current code LIR PC. */
 	int lpc;
 
 	/* Table to represent LIR-PC to Arm64-code map. */
@@ -764,15 +764,10 @@ jit_visit_lineinfo_op(
 
 	CONSUME_IMM32(line);
 
-	addr = (intptr_t)&ctx->rt->line;
 	ASM {
 		/* rt->line = line; */
-		MOVZ	(REG_X2, IMM16(addr & 0xffff),		LSL_0);
-		MOVK	(REG_X2, IMM16((addr >> 16) & 0xffff),	LSL_16);
-		MOVK	(REG_X2, IMM16((addr >> 32) & 0xffff),	LSL_32);
-		MOVK	(REG_X2, IMM16((addr >> 48) & 0xffff),	LSL_48);
-		MOVZ	(REG_X3, IMM16(line & 0xffff),		LSL_0);
-		STR	(REG_X3, REG_X2);
+		MOVZ		(REG_X2, IMM16(line & 0xffff), LSL_0);
+		STR_IMM		(REG_X2, REG_X0, IMM9(8));
 	}
 
 	return true;
@@ -1033,7 +1028,7 @@ jit_visit_add_op(
 	CONSUME_TMPVAR(src1);
 	CONSUME_TMPVAR(src2);
 
-	/* if (!jit_add_helper(rt, dst, src1, src2)) return false; */
+	/* if (!rt_add_helper(rt, dst, src1, src2)) return false; */
 	ASM_BINARY_OP(rt_add_helper);
 
 	return true;
@@ -1052,7 +1047,7 @@ jit_visit_sub_op(
 	CONSUME_TMPVAR(src1);
 	CONSUME_TMPVAR(src2);
 
-	/* if (!jit_sub_helper(rt, dst, src1, src2)) return false; */
+	/* if (!rt_sub_helper(rt, dst, src1, src2)) return false; */
 	ASM_BINARY_OP(rt_sub_helper);
 
 	return true;
@@ -1071,7 +1066,7 @@ jit_visit_mul_op(
 	CONSUME_TMPVAR(src1);
 	CONSUME_TMPVAR(src2);
 
-	/* if (!jit_mul_helper(rt, dst, src1, src2)) return false; */
+	/* if (!rt_mul_helper(rt, dst, src1, src2)) return false; */
 	ASM_BINARY_OP(rt_mul_helper);
 
 	return true;
@@ -1090,7 +1085,7 @@ jit_visit_div_op(
 	CONSUME_TMPVAR(src1);
 	CONSUME_TMPVAR(src2);
 
-	/* if (!jit_div_helper(rt, dst, src1, src2)) return false; */
+	/* if (!rt_div_helper(rt, dst, src1, src2)) return false; */
 	ASM_BINARY_OP(rt_div_helper);
 
 	return true;
@@ -1109,7 +1104,7 @@ jit_visit_mod_op(
 	CONSUME_TMPVAR(src1);
 	CONSUME_TMPVAR(src2);
 
-	/* if (!jit_mod_helper(rt, dst, src1, src2)) return false; */
+	/* if (!rt_mod_helper(rt, dst, src1, src2)) return false; */
 	ASM_BINARY_OP(rt_mod_helper);
 
 	return true;
@@ -1128,7 +1123,7 @@ jit_visit_and_op(
 	CONSUME_TMPVAR(src1);
 	CONSUME_TMPVAR(src2);
 
-	/* if (!jit_and_helper(rt, dst, src1, src2)) return false; */
+	/* if (!rt_and_helper(rt, dst, src1, src2)) return false; */
 	ASM_BINARY_OP(rt_and_helper);
 
 	return true;
@@ -1147,7 +1142,7 @@ jit_visit_or_op(
 	CONSUME_TMPVAR(src1);
 	CONSUME_TMPVAR(src2);
 
-	/* if (!jit_or_helper(rt, dst, src1, src2)) return false; */
+	/* if (!rt_or_helper(rt, dst, src1, src2)) return false; */
 	ASM_BINARY_OP(rt_or_helper);
 
 	return true;
@@ -1166,7 +1161,7 @@ jit_visit_xor_op(
 	CONSUME_TMPVAR(src1);
 	CONSUME_TMPVAR(src2);
 
-	/* if (!jit_xor_helper(rt, dst, src1, src2)) return false; */
+	/* if (!rt_xor_helper(rt, dst, src1, src2)) return false; */
 	ASM_BINARY_OP(rt_xor_helper);
 
 	return true;
@@ -1183,7 +1178,7 @@ jit_visit_neg_op(
 	CONSUME_TMPVAR(dst);
 	CONSUME_TMPVAR(src);
 
-	/* if (!jit_neg_helper(rt, dst, src)) return false; */
+	/* if (!rt_neg_helper(rt, dst, src)) return false; */
 	ASM_UNARY_OP(rt_xor_helper);
 
 	return true;
@@ -1202,7 +1197,7 @@ jit_visit_lt_op(
 	CONSUME_TMPVAR(src1);
 	CONSUME_TMPVAR(src2);
 
-	/* if (!jit_lt_helper(rt, dst, src1, src2)) return false; */
+	/* if (!rt_lt_helper(rt, dst, src1, src2)) return false; */
 	ASM_BINARY_OP(rt_lt_helper);
 
 	return true;
@@ -1221,7 +1216,7 @@ jit_visit_lte_op(
 	CONSUME_TMPVAR(src1);
 	CONSUME_TMPVAR(src2);
 
-	/* if (!jit_lte_helper(rt, dst, src1, src2)) return false; */
+	/* if (!rt_lte_helper(rt, dst, src1, src2)) return false; */
 	ASM_BINARY_OP(rt_lte_helper);
 
 	return true;
@@ -1240,7 +1235,7 @@ jit_visit_eq_op(
 	CONSUME_TMPVAR(src1);
 	CONSUME_TMPVAR(src2);
 
-	/* if (!jit_eq_helper(rt, dst, src1, src2)) return false; */
+	/* if (!rt_eq_helper(rt, dst, src1, src2)) return false; */
 	ASM_BINARY_OP(rt_eq_helper);
 
 	return true;
@@ -1259,7 +1254,7 @@ jit_visit_neq_op(
 	CONSUME_TMPVAR(src1);
 	CONSUME_TMPVAR(src2);
 
-	/* if (!jit_neq_helper(rt, dst, src1, src2)) return false; */
+	/* if (!rt_neq_helper(rt, dst, src1, src2)) return false; */
 	ASM_BINARY_OP(rt_neq_helper);
 
 	return true;
@@ -1278,7 +1273,7 @@ jit_visit_gte_op(
 	CONSUME_TMPVAR(src1);
 	CONSUME_TMPVAR(src2);
 
-	/* if (!jit_gte_helper(rt, dst, src1, src2)) return false; */
+	/* if (!rt_gte_helper(rt, dst, src1, src2)) return false; */
 	ASM_BINARY_OP(rt_gte_helper);
 
 	return true;
@@ -1297,7 +1292,7 @@ jit_visit_gt_op(
 	CONSUME_TMPVAR(src1);
 	CONSUME_TMPVAR(src2);
 
-	/* if (!jit_gt_helper(rt, dst, src1, src2)) return false; */
+	/* if (!rt_gt_helper(rt, dst, src1, src2)) return false; */
 	ASM_BINARY_OP(rt_gt_helper);
 
 	return true;
@@ -1316,7 +1311,7 @@ jit_visit_loadarray_op(
 	CONSUME_TMPVAR(src1);
 	CONSUME_TMPVAR(src2);
 
-	/* if (!jit_loadarray_helper(rt, dst, src1, src2)) return false; */
+	/* if (!rt_loadarray_helper(rt, dst, src1, src2)) return false; */
 	ASM_BINARY_OP(rt_loadarray_helper);
 
 	return true;

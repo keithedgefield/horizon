@@ -2,7 +2,7 @@
 
 set -eu
 
-cp ../build/macos/linguine .
+cp ../build/linux/linguine .
 
 for f in syntax/*.ls; do
     echo -n "Running $f ... "

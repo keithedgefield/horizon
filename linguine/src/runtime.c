@@ -472,12 +472,10 @@ rt_call(
 fprintf(stderr, "Returned from JIT code with false.\n");
 				return false;
 			}
-fprintf(stderr, "Returned from JIT code with true.\n");
-//printf("%d, %d.\n", rt->frame->tmpvar[0].type, rt->frame->tmpvar[0].val.i);
-//printf("%d, %d.\n", rt->frame->tmpvar[1].type, rt->frame->tmpvar[1].val.i);
-//printf("%d, %d.\n", rt->frame->tmpvar[2].type, rt->frame->tmpvar[2].val.i);
-//printf("%d, %f.\n", rt->frame->tmpvar[0].type, rt->frame->tmpvar[0].val.f);
-//printf("%d, %s.\n", rt->frame->tmpvar[0].type, rt->frame->tmpvar[0].val.str->s);
+//fprintf(stderr, "Returned from JIT code with true.\n");
+//fprintf(stderr, "%d, %d.\n", rt->frame->tmpvar[0].type, rt->frame->tmpvar[0].val.i);
+//fprintf(stderr, "%d, %f.\n", rt->frame->tmpvar[0].type, rt->frame->tmpvar[0].val.f);
+//fprintf(stderr, "%d, %s.\n", rt->frame->tmpvar[0].type, rt->frame->tmpvar[0].val.str->s);
 		} else {
 			/* Call the bytecode interpreter. */
 			if (!rt_visit_bytecode(rt, func))

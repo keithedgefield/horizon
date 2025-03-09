@@ -84,6 +84,9 @@ struct rt_env {
 	/* Stack. (Do not move. JIT assumes the offset 0.) */
 	struct rt_frame *frame;
 
+	/* Execution line. (Do not move. JIT assumes the offset 8.) */
+	int line;
+
 	/* Global symbols. */
 	struct rt_bindglobal *global;
 
@@ -103,9 +106,8 @@ struct rt_env {
 	struct rt_array *garbage_arr_list;
 	struct rt_dict *garbage_dict_list;
 
-	/* Execution file and line. */
+	/* Execution file. */
 	char file_name[1024];
-	int line;
 
 	/* Error message. */
 	char error_message[4096];
