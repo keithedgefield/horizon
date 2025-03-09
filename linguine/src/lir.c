@@ -148,7 +148,8 @@ lir_build(
 
 		/* Move to a next. */
 		cur_block = cur_block->succ;
-		if (cur_block->type == HIR_BLOCK_END) {
+		if (cur_block->stop) {
+		//if (cur_block->type == HIR_BLOCK_END) {
 			cur_block->addr = bytecode_top;
 			break;
 		}
@@ -274,6 +275,7 @@ lir_visit_if_block(
 	struct hir_stmt *stmt;
 	int cond_tmpvar;
 	bool is_else;
+	struct hir_block *b;
 
 	assert(block != NULL);
 	assert(block->type == HIR_BLOCK_IF);
@@ -315,10 +317,14 @@ lir_visit_if_block(
 		}
 	}
 
-	/* Visit an inner block if exists. */
-	if (block->val.if_.inner != NULL) {
-		if (!lir_visit_block(block->val.if_.inner))
+	/* Visit an inner block. */
+	b = block->val.if_.inner;
+	while (b != NULL) {
+		if (!lir_visit_block(b))
 			return false;
+		if (b->stop)
+			break;
+		b = b->succ;
 	}
 
 	/* Visit a chaining block if exists. */
@@ -374,6 +380,7 @@ lir_visit_for_range_block(
 {
 	uint32_t loop_addr;
 	int start_tmpvar, stop_tmpvar, loop_tmpvar, cmp_tmpvar;
+	struct hir_block *b;
 
 	assert(block != NULL);
 	assert(block->type == HIR_BLOCK_FOR);
@@ -441,8 +448,14 @@ lir_visit_for_range_block(
 		return false;
 
 	/* Visit an inner block. */
-	if (!lir_visit_block(block->val.for_.inner))
-		return false;
+	b = block->val.for_.inner;
+	while (b != NULL) {
+		if (!lir_visit_block(b))
+			return false;
+		if (b->stop)
+			break;
+		b = b->succ;
+	}
 
 	/* Increment the loop variable. */
 	if (!lir_put_opcode(LOP_INC))
@@ -472,6 +485,7 @@ lir_visit_for_kv_block(
 	uint32_t loop_addr;
 	int col_tmpvar, size_tmpvar, i_tmpvar, key_tmpvar, val_tmpvar, cmp_tmpvar;
 	bool is_else;
+	struct hir_block *b;
 
 	assert(block != NULL);
 	assert(block->type == HIR_BLOCK_FOR);
@@ -575,9 +589,13 @@ lir_visit_for_kv_block(
 		return false;
 
 	/* Visit an inner block. */
-	if (block->val.for_.inner != NULL) {
-		if (!lir_visit_block(block->val.for_.inner))
+	b = block->val.for_.inner;
+	while (b != NULL) {
+		if (!lir_visit_block(b))
 			return false;
+		if (b->stop)
+			break;
+		b = b->succ;
 	}
 
 	/* Put a back-edge jump. */
@@ -604,6 +622,7 @@ lir_visit_for_v_block(
 	uint32_t loop_addr;
 	int arr_tmpvar, size_tmpvar, i_tmpvar, val_tmpvar, cmp_tmpvar;
 	bool is_else;
+	struct hir_block *b;
 
 	assert(block != NULL);
 	assert(block->type == HIR_BLOCK_FOR);
@@ -690,9 +709,13 @@ lir_visit_for_v_block(
 		return false;
 
 	/* Visit an inner block. */
-	if (block->val.for_.inner != NULL) {
-		if (!lir_visit_block(block->val.for_.inner))
+	b = block->val.for_.inner;
+	while (b != NULL) {
+		if (!lir_visit_block(b))
 			return false;
+		if (b->stop)
+			break;
+		b = b->succ;
 	}
 
 	/* Put a back-edge jump. */
@@ -716,6 +739,7 @@ lir_visit_while_block(
 {
 	uint32_t loop_addr;
 	int cmp_tmpvar;
+	struct hir_block *b;
 
 	assert(block != NULL);
 	assert(block->type == HIR_BLOCK_WHILE);
@@ -744,9 +768,13 @@ lir_visit_while_block(
 	lir_decrement_tmpvar(cmp_tmpvar);
 
 	/* Visit an inner block. */
-	if (block->val.for_.inner != NULL) {
-		if (!lir_visit_block(block->val.for_.inner))
+	b = block->val.while_.inner;
+	while (b != NULL) {
+		if (!lir_visit_block(b))
 			return false;
+		if (b->stop)
+			break;
+		b = b->succ;
 	}
 
 	/* Put a back-edge jump. */
