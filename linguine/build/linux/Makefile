@@ -15,6 +15,7 @@ OBJS=\
 	hir.o \
 	lir.o \
 	runtime.o \
+	jit-arm64.o \
 	jit-x86_64.o
 
 all: linguine
@@ -22,7 +23,7 @@ all: linguine
 linguine: command.o liblinguine.a
 	$(CC) -o linguine $(CFLAGS) $^
 
-liblinguine.a: parser.tab.o lexer.yy.o ast.o hir.o lir.o runtime.o jit-x86_64.o
+liblinguine.a: $(OBJS)
 	$(AR) rcs liblinguine.a $^
 
 command.o: ../../src/command.c
@@ -50,6 +51,9 @@ lir.o: ../../src/lir.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
 runtime.o: ../../src/runtime.c
+	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
+jit-arm64.o: ../../src/jit-arm64.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
 jit-x86_64.o: ../../src/jit-x86_64.c

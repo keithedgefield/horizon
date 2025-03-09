@@ -11,7 +11,7 @@
 
 #include "compat.h"		/* ARCH_ARM64 */
 
-#if defined(ARCH_ARM64)
+#if defined(ARCH_ARM64) && defined(USE_JIT)
 
 #include "runtime.h"
 
@@ -45,16 +45,17 @@
 /* Branch patch type */
 #define PATCH_BAL		0
 #define PATCH_BEQ		1
+#define PATCH_BNE		2
 
 /* JIT codegen context */
 struct jit_context {
 	struct rt_env *rt;
 	struct rt_func *func;
 
-	/* Generated code. */
+	/* Mappd code area top. */
 	uint32_t *code_top;
 
-	/* Code end. */
+	/* Mapped code area end. */
 	uint32_t *code_end;
 
 	/* Current code position. */
@@ -1819,18 +1820,18 @@ jit_visit_jmpiffalse_op(
 		LDR_IMM	(REG_X3, REG_X2, IMM9(8));
 
 		/* Compare: rt->frame->tmpvar[dst].val.i == 0 */
-		CMP_IMM	(REG_X3, IMM12(0));
+		CMP_IMM	(REG_X3, IMM12(1));
 	}
 	
 	/* Patch later. */
 	ctx->branch_patch[ctx->branch_patch_count].code = ctx->code;
 	ctx->branch_patch[ctx->branch_patch_count].lpc = target_lpc;
-	ctx->branch_patch[ctx->branch_patch_count].type = PATCH_BEQ;
+	ctx->branch_patch[ctx->branch_patch_count].type = PATCH_BNE;
 	ctx->branch_patch_count++;
 
 	ASM {
 		/* Patched later. */
-		BEQ	(IMM19(0));
+		BNE	(IMM19(0));
 	}
 
 	return true;
@@ -1904,6 +1905,7 @@ jit_visit_bytecode(
 		}
 		ctx->pc_entry[ctx->pc_entry_count].lpc = ctx->lpc;
 		ctx->pc_entry[ctx->pc_entry_count].code = ctx->code;
+		ctx->pc_entry_count++;
 
 		/* Dispatch by opcode. */
 		CONSUME_OPCODE(opcode);
@@ -2062,6 +2064,11 @@ jit_visit_bytecode(
 		}
 	}
 
+	/* Add the tail PC to the table. */
+	ctx->pc_entry[ctx->pc_entry_count].lpc = ctx->lpc;
+	ctx->pc_entry[ctx->pc_entry_count].code = ctx->code;
+	ctx->pc_entry_count++;
+
 	/* Put an epilogue. */
 	ASM {
 	/* EPILOGUE: */
@@ -2097,6 +2104,9 @@ jit_patch_branch(
 	int offset;
 	int i;
 
+	if (ctx->pc_entry_count == 0)
+		return true;
+
 	/* Search a code addr at lpc. */
 	target_code = NULL;
 	for (i = 0; i < ctx->pc_entry_count; i++) {
@@ -2112,7 +2122,7 @@ jit_patch_branch(
 	}
 
 	/* Calc a branch offset. */
-	offset = (intptr_t)target_code - (intptr_t)ctx->pc_entry[i].code;
+	offset = (intptr_t)target_code - (intptr_t)ctx->branch_patch[patch_index].code;
 
 	/* Set the assembler cursor. */
 	ctx->code = ctx->branch_patch[patch_index].code;
@@ -2126,9 +2136,13 @@ jit_patch_branch(
 		ASM {
 			BEQ	(IMM19(offset));
 		}
+	} else if (ctx->branch_patch[patch_index].type == PATCH_BNE) {
+		ASM {
+			BNE	(IMM19(offset));
+		}
 	}
 
 	return true;
 }
 
-#endif /* ARCH_ARM64 */
+#endif /* defined(ARCH_ARM64) && defined(USE_JIT) */

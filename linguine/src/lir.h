@@ -102,4 +102,7 @@ int lir_get_error_line(void);
 /* Get an error message. */
 const char *lir_get_error_message(void);
 
+/* Dump LIR. */
+void lir_dump(struct lir_func *func);
+
 #endif

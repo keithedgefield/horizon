@@ -11,7 +11,7 @@
 
 #include "compat.h"		/* ARCH_X86_64 */
 
-#if defined(ARCH_X86_64)
+#if defined(ARCH_X86_64) && defined(USE_JIT)
 
 #include "runtime.h"
 
@@ -1396,6 +1396,7 @@ jit_visit_bytecode(
 		}
 		ctx->pc_entry[ctx->pc_entry_count].lpc = ctx->lpc;
 		ctx->pc_entry[ctx->pc_entry_count].code = ctx->code;
+		ctx->pc_entry_count++;
 
 		/* Dispatch by opcode. */
 		CONSUME_OPCODE(opcode);
@@ -1621,4 +1622,4 @@ jit_patch_branch(
 	return true;
 }
 
-#endif /* ARCH_X86_64 */
+#endif /* defined(ARCH_X86_64) && defined(USE_JIT) */

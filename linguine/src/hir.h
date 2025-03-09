@@ -89,6 +89,9 @@ struct hir_block {
 	/* Successor Block (NULL on HIR_BLOCK_END) */
 	struct hir_block *succ;
 
+	/* Is a tail of siblings? */
+	bool stop;
+
 	/* Bytecode address. */
 	uint32_t addr;
 
@@ -163,6 +166,9 @@ struct hir_block {
 			/* No epilogue code. */
 		} end;
 	} val;
+
+	/* For debug. */
+	int id;
 };
 
 /* HIR Statement */
@@ -299,5 +305,8 @@ int hir_get_error_line(void);
 
 /* Get an error message. */
 const char *hir_get_error_message(void);
+
+/* Debug dump. */
+void hir_dump_block(struct hir_block *block);
 
 #endif

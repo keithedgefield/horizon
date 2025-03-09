@@ -29,9 +29,18 @@
 #include <stdarg.h>
 #include <assert.h>
 
+/* False assertion */
 #define NOT_IMPLEMENTED		0
 #define NEVER_COME_HERE		0
 #define BROKEN_BYTECODE		"Broken bytecode."
+
+/* Debug trace */
+#define DEBUG_TRACE(pc, op)	printf("[TRACE] pc=%d, opcode=%s\n", pc, op)
+
+/*
+ * Config
+ */
+bool linguine_conf_use_jit = true;
 
 /* Text format buffer. */
 static char text_buf[65536];
@@ -314,8 +323,10 @@ rt_register_lir(
 	rt->global = global;
 
 	/* Do JIT compilation */
-	if (!jit_build(rt, func))
-		return false;
+	if (linguine_conf_use_jit) {
+		if (!jit_build(rt, func))
+			return false;
+	}
 
 	/* Link. */
 	func->next = rt->func_list;
@@ -468,14 +479,8 @@ rt_call(
 
 		if (func->jit_code != NULL) {
 			/* Call a JIT-generated code. */
-			if (!func->jit_code(rt)) {
-fprintf(stderr, "Returned from JIT code with false.\n");
+			if (!func->jit_code(rt))
 				return false;
-			}
-//fprintf(stderr, "Returned from JIT code with true.\n");
-//fprintf(stderr, "%d, %d.\n", rt->frame->tmpvar[0].type, rt->frame->tmpvar[0].val.i);
-//fprintf(stderr, "%d, %f.\n", rt->frame->tmpvar[0].type, rt->frame->tmpvar[0].val.f);
-//fprintf(stderr, "%d, %s.\n", rt->frame->tmpvar[0].type, rt->frame->tmpvar[0].val.str->s);
 		} else {
 			/* Call the bytecode interpreter. */
 			if (!rt_visit_bytecode(rt, func))
@@ -1836,6 +1841,8 @@ rt_visit_lineinfo_op(
 {
 	int line;
 
+	DEBUG_TRACE(*pc, "LINEINFO");
+
 	assert(func->bytecode[*pc] == ROP_LINEINFO);
 
 	if (*pc + 1 + 4 > func->bytecode_size) {
@@ -1862,6 +1869,8 @@ rt_visit_assign_op(
 	struct rt_func *func,
 	int *pc)
 {
+	DEBUG_TRACE(*pc, "ASSIGN");
+
 	UNARY_OP(rt_assign_helper);
 }
 
@@ -1884,6 +1893,8 @@ rt_visit_iconst_op(
 {
 	uint32_t dst;
 	uint32_t val;
+
+	DEBUG_TRACE(*pc, "ICONST");
 
 	assert(func->bytecode[*pc] == ROP_ICONST);
 
@@ -2058,6 +2069,8 @@ rt_visit_inc_op(
 {
 	struct rt_value *val;
 	uint32_t dst;
+
+	DEBUG_TRACE(*pc, "INC");
 
 	assert(func->bytecode[*pc] == ROP_INC);
 
@@ -2914,6 +2927,8 @@ rt_visit_eq_op(
 	struct rt_func *func,
 	int *pc)
 {
+	DEBUG_TRACE(*pc, "EQ");
+
 	BINARY_OP(rt_eq_helper);
 }
 
@@ -3403,10 +3418,12 @@ rt_visit_storesymbol_op(
 	uint32_t src;
 	int len;
 
+	DEBUG_TRACE(*pc, "STORESYMBOL");
+
 	symbol = (const char *)&func->bytecode[*pc + 1];
 	len = strlen(symbol);
-	if (*pc + 1 + len + 1 > func->bytecode_size) {
-		rt_error(rt, "Bytecode too short.");
+	if (*pc + 1 + len + 1 + 2 > func->bytecode_size) {
+		rt_error(rt, BROKEN_BYTECODE);
 		return false;
 	}
 
@@ -3793,6 +3810,8 @@ rt_visit_jmp_op(
 {
 	uint32_t target;
 
+	DEBUG_TRACE(*pc, "JMP");
+
 	assert(func->bytecode[*pc] == ROP_JMP);
 
 	if (*pc + 1 + 4 > func->bytecode_size) {
@@ -3804,7 +3823,7 @@ rt_visit_jmp_op(
 		(func->bytecode[*pc + 2] << 16) |
 		(func->bytecode[*pc + 3] << 8) |
 		func->bytecode[*pc + 4];
-	if (target >= func->bytecode_size + 1) {
+	if (target > func->bytecode_size + 1) {
 		rt_error(rt, BROKEN_BYTECODE);
 		return false;
 	}
@@ -3824,6 +3843,8 @@ rt_visit_jmpiftrue_op(
 	uint32_t target;
 	uint32_t src;
 
+	DEBUG_TRACE(*pc, "JMPIFTRUE");
+
 	assert(func->bytecode[*pc] == ROP_JMPIFTRUE);
 
 	if (*pc + 1 + 2 + 4 > func->bytecode_size) {
@@ -3842,7 +3863,7 @@ rt_visit_jmpiftrue_op(
 		(func->bytecode[*pc + 4] << 16) |
 		(func->bytecode[*pc + 5] << 8) |
 		func->bytecode[*pc + 6];
-	if (target >= func->bytecode_size + 1) {
+	if (target > func->bytecode_size + 1) {
 		rt_error(rt, BROKEN_BYTECODE);
 		return false;
 	}
@@ -3888,7 +3909,7 @@ rt_visit_jmpiffalse_op(
 		(func->bytecode[*pc + 4] << 16) |
 		(func->bytecode[*pc + 5] << 8) |
 		func->bytecode[*pc + 6];
-	if (target >= func->bytecode_size) {
+	if (target > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
 		return false;
 	}

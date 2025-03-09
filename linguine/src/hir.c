@@ -22,6 +22,9 @@
 #define NEVER_COME_HERE		(0)
 #define UNIMPLEMENTED		(0)
 
+/* Debug dump */
+#define DEBUG_DUMP
+
 /* List-add function. */
 #define HIR_ADD_TO_LAST(type, list, p)			\
 	do {						\
@@ -52,6 +55,11 @@ struct hir_block *hir_func_tbl[HIR_FUNC_MAX];
 static int hir_error_line;
 static int hir_error_col;
 static char hir_error_message[65536];
+
+/*
+ * Block id top.
+ */
+static int block_id_top;
 
 /*
  * Anonymous functions.
@@ -212,6 +220,7 @@ hir_visit_func(
 		return false;
 	}
 	memset(func_block, 0, sizeof(struct hir_block));
+	func_block->id = block_id_top++;
 	func_block->type = HIR_BLOCK_FUNC;
 	func_block->val.func.file_name = strdup(hir_file_name);
 	if (func_block->val.func.file_name == NULL) {
@@ -237,6 +246,7 @@ hir_visit_func(
 			break;
 		}
 		memset(end_block, 0, sizeof(struct hir_block));
+		end_block->id = block_id_top++;
 		end_block->type = HIR_BLOCK_END;
 
 		/* Set end_block to the succ of func_block. */
@@ -251,6 +261,7 @@ hir_visit_func(
 				break;
 			}
 			memset(func_block->val.func.inner, 0, sizeof(struct hir_block));
+			func_block->val.func.inner->id = block_id_top++;
 			func_block->val.func.inner->type = HIR_BLOCK_BASIC;
 
 			/* Visit the stmt_list. */
@@ -270,6 +281,10 @@ hir_visit_func(
 		/* Store func_block to the table. */
 		hir_func_tbl[hir_func_count] = func_block;
 		hir_func_count++;
+
+#ifdef DEBUG_DUMP
+		hir_dump_block(func_block);
+#endif
 
 		/* Succeeded. */
 		return true;
@@ -298,52 +313,51 @@ hir_visit_stmt_list(
 	assert(cur_block != NULL);
 	assert(prev_block != NULL);
 	assert(parent_block != NULL);
-	assert(stmt_list != NULL);
 
 	/* Assume we have a first block allocated. */
 	assert(*cur_block != NULL);
 	assert((*cur_block)->type == HIR_BLOCK_BASIC);
 
-	/* Assume we have at least one stmt. */
-	assert(stmt_list->list != NULL);
-
 	/* Visit each stmt. */
-	cur_astmt = stmt_list->list;
-	prev_astmt = NULL;
+	cur_astmt = NULL;
 	is_control = false;
-	while (cur_astmt != NULL) {
-		/* Break if the astmt is a loop-control statement. */
-		if (cur_astmt->type == AST_STMT_CONTINUE ||
-		    cur_astmt->type == AST_STMT_BREAK) {
-			is_control = true;
-			break;
+	if (stmt_list != NULL) {
+		cur_astmt = stmt_list->list;
+		prev_astmt = NULL;
+		while (cur_astmt != NULL) {
+			/* Break if the astmt is a loop-control statement. */
+			if (cur_astmt->type == AST_STMT_CONTINUE ||
+			    cur_astmt->type == AST_STMT_BREAK) {
+				is_control = true;
+				break;
+			}
+
+			/* Visit a stmt. */
+			last_cur_block = *cur_block;
+			if (!hir_visit_stmt(cur_block, prev_block, parent_block, cur_astmt))
+				return false;
+
+			/* Break if the astmt is a return statement. */
+			if (cur_astmt->type == AST_STMT_RETURN) {
+				is_control = true;
+				break;
+			}
+
+			prev_astmt = cur_astmt;
+			cur_astmt = cur_astmt->next;
 		}
-
-		/* Visit a stmt. */
-		last_cur_block = *cur_block;
-		if (!hir_visit_stmt(cur_block, prev_block, parent_block, cur_astmt))
-			return false;
-
-		/* Break if the astmt is a return statement. */
-		if (cur_astmt->type == AST_STMT_RETURN) {
-			is_control = true;
-			break;
-		}
-
-		prev_astmt = cur_astmt;
-		cur_astmt = cur_astmt->next;
 	}
 
 	/* If the final block is an empty placeholder. */
 	assert((*cur_block)->type == HIR_BLOCK_BASIC);
-	if ((*cur_block)->val.basic.stmt_list == NULL) {
-		assert((*prev_block)->succ == *cur_block);
-		hir_free_block(*cur_block);
-		*cur_block = *prev_block;
-	}
+//	if ((*cur_block)->val.basic.stmt_list == NULL) {
+//		assert((*prev_block)->succ == *cur_block);
+//		hir_free_block(*cur_block);
+//		*cur_block = *prev_block;
+//	}
 
 	/* Terminate with a proper succ. */
-	if (is_control) {
+	if (cur_astmt != NULL && is_control) {
 		/* If the control stopped with... */
 		assert(cur_astmt != NULL);
 		switch (cur_astmt->type) {
@@ -365,9 +379,11 @@ hir_visit_stmt_list(
 			if (p_search->type == HIR_BLOCK_FOR) {
 				assert(p_search->val.for_.inner != NULL);
 				(*cur_block)->succ = p_search->val.for_.inner;
+				(*cur_block)->stop = true;
 			} else if (p_search->type == HIR_BLOCK_WHILE) {
 				assert(p_search->val.while_.inner != NULL);
 				(*cur_block)->succ = p_search->val.while_.inner;
+				(*cur_block)->stop = true;
 			}
 			break;
 		case AST_STMT_BREAK:
@@ -386,6 +402,7 @@ hir_visit_stmt_list(
 
 			/* Continue with the block after the loop. */
 			(*cur_block)->succ = p_search->succ;
+			(*cur_block)->stop = true;
 			break;
 		case AST_STMT_RETURN:
 			/* Search a func block.*/
@@ -398,6 +415,7 @@ hir_visit_stmt_list(
 
 			/* Go to HIR_BLOCK_END. */
 			(*cur_block)->succ = p_search->succ;
+			(*cur_block)->stop = true;
 			break;
 		default:
 			assert(NEVER_COME_HERE);
@@ -417,6 +435,7 @@ hir_visit_stmt_list(
 
 			/* Go to HIR_BLOCK_END. */
 			(*cur_block)->succ = p_search->succ;
+			(*cur_block)->stop = true;
 			break;
 		case HIR_BLOCK_IF:
 			/* Find the chain-top if block. */
@@ -435,11 +454,13 @@ hir_visit_stmt_list(
 			/* Continue to the first inner block. */
 			assert(parent_block->val.for_.inner != NULL);
 			(*cur_block)->succ = parent_block->val.for_.inner;
+			(*cur_block)->stop = true;
 			break;
 		case HIR_BLOCK_WHILE:
 			/* Continue to the first inner block. */
 			assert(parent_block->val.while_.inner != NULL);
 			(*cur_block)->succ = parent_block->val.while_.inner;
+			(*cur_block)->stop = true;
 			break;
 		default:
 			assert(NEVER_COME_HERE);
@@ -638,7 +659,7 @@ hir_visit_if_stmt(
 	assert(prev_block != NULL);
 	assert(parent_block != NULL);
 	assert(cur_astmt != NULL);
-	assert(cur_astmt->type == AST_STMT_EXPR);
+	assert(cur_astmt->type == AST_STMT_IF);
 
 	/* Allocate an if block. */
 	if ((*cur_block)->type == HIR_BLOCK_BASIC &&
@@ -675,7 +696,9 @@ hir_visit_if_stmt(
 		return false;
 	}
 	memset(exit_block, 0, sizeof(struct hir_block));
+	exit_block->id = block_id_top++;
 	exit_block->type = HIR_BLOCK_BASIC;
+	exit_block->succ = parent_block->succ;
 	if_block->succ = exit_block;
 
 	/* Visit a cond expr. */
@@ -748,6 +771,7 @@ hir_visit_elif_stmt(
 		hir_out_of_memory();
 		return false;
 	}
+	elif_block->id = block_id_top++;
 	elif_block->type = HIR_BLOCK_IF;
 	elif_block->succ = exit_block;
 	elif_block->line = cur_astmt->line;
@@ -760,6 +784,7 @@ hir_visit_elif_stmt(
 		return false;
 	}
 	memset(elif_block->val.if_.inner, 0, sizeof(struct hir_block));
+	elif_block->id = block_id_top++;
 	elif_block->val.if_.inner->type = HIR_BLOCK_BASIC;
 	elif_block->val.if_.inner->line = cur_astmt->line;
 
@@ -834,6 +859,7 @@ hir_visit_else_stmt(
 		return false;
 	}
 	memset(else_block, 0, sizeof(struct hir_block));
+	else_block->id = block_id_top++;
 	else_block->type = HIR_BLOCK_IF;
 	else_block->succ = exit_block;
 	else_block->line = cur_astmt->line;
@@ -846,6 +872,7 @@ hir_visit_else_stmt(
 		return false;
 	}
 	memset(else_block->val.if_.inner, 0, sizeof(struct hir_block));
+	else_block->id = block_id_top++;
 	else_block->val.if_.inner->type = HIR_BLOCK_BASIC;
 	else_block->val.if_.inner->line = cur_astmt->line;
 
@@ -903,6 +930,7 @@ hir_visit_while_stmt(
 			hir_out_of_memory();
 			return false;
 		}
+		while_block->id = block_id_top++;
 		while_block->type = HIR_BLOCK_WHILE;
 		while_block->line = cur_astmt->line;
 		(*cur_block)->succ = while_block;
@@ -915,6 +943,7 @@ hir_visit_while_stmt(
 		return false;
 	}
 	memset(while_block->val.while_.inner, 0, sizeof(struct hir_block));
+	while_block->id = block_id_top++;
 	while_block->val.while_.inner->type = HIR_BLOCK_BASIC;
 	while_block->val.while_.inner->line = cur_astmt->line;
 
@@ -925,7 +954,8 @@ hir_visit_while_stmt(
 		return false;
 	}
 	memset(while_block, 0, sizeof(struct hir_block));
-	while_block->type = HIR_BLOCK_WHILE;
+	exit_block->id = block_id_top++;
+	exit_block->type = HIR_BLOCK_BASIC;
 	while_block->succ = exit_block;
 
 	/* Visit a cond expr. */
@@ -990,6 +1020,7 @@ hir_visit_for_stmt(
 			return false;
 		}
 		memset(for_block, 0, sizeof(struct hir_block));
+		for_block->id = block_id_top++;
 		for_block->type = HIR_BLOCK_FOR;
 		for_block->line = cur_astmt->line;
 		(*cur_block)->succ = for_block;
@@ -1002,6 +1033,7 @@ hir_visit_for_stmt(
 		return false;
 	}
 	memset(for_block->val.for_.inner, 0, sizeof(struct hir_block));
+	for_block->val.for_.inner->id = block_id_top++;
 	for_block->val.for_.inner->type = HIR_BLOCK_BASIC;
 	for_block->val.for_.inner->line = cur_astmt->line;
 
@@ -1012,7 +1044,9 @@ hir_visit_for_stmt(
 		return false;
 	}
 	memset(exit_block, 0, sizeof(struct hir_block));
+	exit_block->id = block_id_top++;
 	exit_block->type = HIR_BLOCK_BASIC;
+	exit_block->succ = parent_block->succ;
 	for_block->succ = exit_block;
 
 	/* Copy the iterator, key, and value symbols. */
@@ -1062,16 +1096,14 @@ hir_visit_for_stmt(
 	}
 
 	/* Visit an inner stmt_list */
-	if (cur_astmt->val.for_.stmt_list != NULL) {
-		inner_cur_block = for_block->val.for_.inner;
-		inner_prev_block = NULL;
-		if (!hir_visit_stmt_list(&inner_cur_block,	/* cur_block */
-					 &inner_prev_block,	/* prev_block */
-					 for_block,		/* parent_block */
-					 cur_astmt->val.for_.stmt_list)) {
-			hir_free_block(for_block);
-			return false;
-		}
+	inner_cur_block = for_block->val.for_.inner;
+	inner_prev_block = NULL;
+	if (!hir_visit_stmt_list(&inner_cur_block,	/* cur_block */
+				 &inner_prev_block,	/* prev_block */
+				 for_block,		/* parent_block */
+				 cur_astmt->val.for_.stmt_list)) {
+		hir_free_block(for_block);
+		return false;
 	}
 
 	/* Move the cursor to the exit block. */
@@ -1765,12 +1797,7 @@ hir_free_block(
 	struct hir_block *b)
 {
 	int i;
-
-	/* (b->succ == b) is a loop. */
-	if (b->succ != NULL && b->succ != b) {
-		hir_free_block(b->succ);
-		b->succ = NULL;
-	}
+	bool is_loop_end;
 
 	switch (b->type) {
 	case HIR_BLOCK_FUNC:
@@ -1846,6 +1873,12 @@ hir_free_block(
 	default:
 		assert(NEVER_COME_HERE);
 		break;
+	}
+
+	/* (b->succ == b) is a loop. */
+	if (!b->stop && b->succ != NULL) {
+		hir_free_block(b->succ);
+		b->succ = NULL;
 	}
 }
 
@@ -2060,4 +2093,95 @@ int hir_get_error_line(void)
 const char *hir_get_error_message(void)
 {
 	return hir_error_message;
+}
+
+/*
+ * Debug printer
+ */
+
+static void hir_dump_block_at_level(struct hir_block *block, int level);
+
+void
+hir_dump_block(
+	struct hir_block *block)
+{
+	hir_dump_block_at_level(block, 0);
+}
+
+static void
+hir_dump_block_at_level(
+	struct hir_block *block,
+	int level)
+{
+	int i;
+
+	while (block != NULL) {
+		for (i = 0; i < level * 4; i++) printf(" ");
+		printf("BLOCK(%d)", block->id);
+
+		switch (block->type) {
+		case HIR_BLOCK_FUNC:
+		{
+			printf(" FUNC succ=%d\n", block->succ->id);
+
+			if (block->val.func.inner != NULL) {
+				for (i = 0; i < (level + 1) * 4; i++) printf(" ");
+				printf("[INNER]\n");
+				hir_dump_block_at_level(block->val.func.inner, level + 1);
+			}
+			break;
+		}
+		case HIR_BLOCK_BASIC:
+		{
+			struct hir_stmt *s;
+			if (block->succ != NULL)
+				printf(" BASIC succ=%d\n", block->succ->id);
+			else
+				printf(" BASIC succ=NULL\n");
+			s = block->val.basic.stmt_list;
+			while (s != NULL) {
+				//hir_dump_stmt(level + 1, s);
+				s = s->next;
+			}
+			break;
+		}
+		case HIR_BLOCK_FOR:
+		{
+			if (block->succ != NULL)
+				printf(" FOR succ=%d\n", block->succ->id);
+			else
+				printf(" FOR succ=NULL\n");
+
+			if (block->val.for_.inner != NULL) {
+				for (i = 0; i < (level + 1) * 4; i++) printf(" ");
+				printf("[INNER]\n");
+				hir_dump_block_at_level(block->val.for_.inner, level + 1);
+			}
+			break;
+		}
+		case HIR_BLOCK_END:
+		{
+			printf(" END\n");
+			break;
+		}
+		case HIR_BLOCK_IF:
+			printf(" IF\n");
+			break;
+		case HIR_BLOCK_WHILE:
+			printf(" WHILE\n");
+			break;
+		default:
+			printf(" SKIP %d\n", block->type);
+			break;
+		}
+
+		if (block->succ != NULL) {
+			if (block->stop) {
+				for (i = 0; i < level * 4; i++) printf(" ");
+				printf("[STOP %d]\n", block->succ->id);
+				break;
+			}
+		}
+		block = block->succ;
+	}
 }

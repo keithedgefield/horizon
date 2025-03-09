@@ -24,10 +24,14 @@ const char usage[] =
 	"Usage: linguine <source file>\n";
 
 const char options[] =
+	"i"	/* Use interpreter instead of JIT. */
 	"h"	/* Show help. */
 	"v";	/* Show version. */
 
 const char *opt_source = NULL;
+
+/* Config */
+extern bool linguine_conf_use_jit;
 
 static const char *print_param[] = {"msg"};
 
@@ -84,6 +88,9 @@ static void parse_options(int argc, char *argv[])
 
 	while ((opt = getopt(argc, argv, options)) != -1) {
 		switch (opt) {
+		case 'i':
+			linguine_conf_use_jit = false;
+			break;
 		case 'h':
 			printf("%s", usage);
 			exit(0);

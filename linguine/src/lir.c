@@ -18,7 +18,9 @@
 #include <stdarg.h>
 #include <assert.h>
 
+/* False assertion */
 #define NEVER_COME_HERE		0
+#define INVALID_OPCODE		0
 
 /*
  * Target LIR.
@@ -197,6 +199,8 @@ lir_build(
 
 	(*lir_func)->tmpvar_size = tmpvar_count;
 
+	lir_dump(*lir_func);
+
 	return true;
 }
 
@@ -205,6 +209,8 @@ lir_visit_block(
 	struct hir_block *block)
 {
 	assert(block != NULL);
+
+	printf("LIR-pass: BLOCK %d\n", block->id);
 
 	switch (block->type) {
 	case HIR_BLOCK_BASIC:
@@ -307,7 +313,6 @@ lir_visit_if_block(
 			if (!lir_put_branch_addr(block->succ))
 				return false;
 		}
-
 	}
 
 	/* Visit an inner block if exists. */
@@ -426,7 +431,6 @@ lir_visit_for_range_block(
 		return false;
 	if (!lir_put_branch_addr(block->succ))
 		return false;
-	lir_decrement_tmpvar(cmp_tmpvar);
 
 	/* Store a loop variable. */
 	if (!lir_put_opcode(LOP_STORESYMBOL))
@@ -437,10 +441,8 @@ lir_visit_for_range_block(
 		return false;
 
 	/* Visit an inner block. */
-	if (block->val.for_.inner != NULL) {
-		if (!lir_visit_block(block->val.for_.inner))
-			return false;
-	}
+	if (!lir_visit_block(block->val.for_.inner))
+		return false;
 
 	/* Increment the loop variable. */
 	if (!lir_put_opcode(LOP_INC))
@@ -454,6 +456,7 @@ lir_visit_for_range_block(
 	if (!lir_put_imm32(loop_addr))
 		return false;
 
+	lir_decrement_tmpvar(cmp_tmpvar);
 	lir_decrement_tmpvar(loop_tmpvar);
 	lir_decrement_tmpvar(stop_tmpvar);
 	lir_decrement_tmpvar(start_tmpvar);
@@ -1690,4 +1693,144 @@ lir_out_of_memory(void)
 	snprintf(lir_error_message,
 		 sizeof(lir_error_message),
 		 "LIR: Out of memory error.");
+}
+
+/*
+ * Dump
+ */
+
+#define IMM1(d)		{ d = (*pc); pc += 1; }
+#define IMM2(d)		{ d = ((*pc) << 8) | *(pc + 1); pc += 2; }
+#define IMM4(d)		{ d = ((*pc) << 24) | ((*(pc + 1)) << 16) | ((*(pc + 2)) << 8) | *(pc + 3); pc += 4; }
+#define IMMS(d)		{ d = pc; pc += strlen(pc) + 1; }
+
+void
+lir_dump(
+	struct lir_func *func)
+{
+	uint8_t *pc;
+	uint8_t *end;
+
+	pc = func->bytecode;
+	end = func->bytecode + func->bytecode_size;
+
+	while (pc < end) {
+		int opcode;
+		int ofs;
+		ofs = pc - func->bytecode;
+		opcode = *pc++;
+		switch (opcode) {
+		case LOP_LINEINFO:
+		{
+			int line;
+			IMM4(line);
+			printf("%04d: LINEINFO(line:%d)\n", ofs, line);
+			break;
+		}
+		case LOP_NOP:
+			pc++;
+			break;
+		case LOP_ASSIGN:
+		{
+			int dst;
+			int src;
+			IMM2(dst);
+			IMM2(src);
+			printf("%04d: ASSIGN(dst:%d, src:%d)\n", ofs, dst, src);
+			break;
+		}
+		case LOP_ICONST:
+		{
+			int dst;
+			uint32_t val;
+			IMM2(dst);
+			IMM4(val);
+			printf("%04d: ICONST(dst:%d, val:%d)\n", ofs, dst, val);
+			break;
+		}
+		//case LOP_FCONST:
+		//case LOP_SCONST:
+		//case LOP_ACONST:
+		//case LOP_DCONST:
+		case LOP_INC:
+		{
+			int dst;
+			IMM2(dst);
+			printf("%04d: INC(dst:%d)\n", ofs, dst);
+			break;
+		}
+		//case LOP_NEG:
+		//case LOP_ADD:
+		//case LOP_SUB:
+		//case LOP_MUL:
+		//case LOP_DIV:
+		//case LOP_MOD:
+		//case LOP_AND:
+		//case LOP_OR:
+		//case LOP_XOR:
+		//case LOP_LT:
+		//case LOP_LTE:
+		//case LOP_GT:
+		//case LOP_GTE:
+		case LOP_EQ:
+		{
+			int dst;
+			int src1;
+			int src2;
+			IMM2(dst);
+			IMM2(src1);
+			IMM2(src2);
+			printf("%04d: EQ(dst:%d, src1:%d, src2:%d)\n", ofs, dst, src1, src2);
+			break;
+		}
+		//case LOP_NEQ:
+		//case LOP_LOADARRAY:
+		//case LOP_STOREARRAY:
+		//case LOP_LEN:
+		//case LOP_GETDICTKEYBYINDEX:
+		//case LOP_GETDICTVALBYINDEX:
+		//case LOP_STOREDOT:
+		//case LOP_LOADDOT:
+		case LOP_STORESYMBOL:
+		{
+			const char *symbol;
+			int src;
+			IMMS(symbol);
+			IMM2(src);
+			printf("%04d: STORESYMBOL(symbol:%s, src:%d)\n", ofs, symbol, src);
+			break;
+		}
+		//case LOP_LOADSYMBOL:
+		//case LOP_CALL:
+		//case LOP_THISCALL:
+		case LOP_JMP:
+		{
+			int target;
+			IMM4(target);
+			printf("%04d: JMP(target:%d)\n", ofs, target);
+			break;
+		}
+		case LOP_JMPIFTRUE:
+		{
+			int src;
+			int target;
+			IMM2(src);
+			IMM4(target);
+			printf("%04d: JMPIFTRUE(src:%d, target:%d)\n", ofs, src, target);
+			break;
+		}
+		case LOP_JMPIFFALSE:
+		{
+			int src;
+			int target;
+			IMM2(src);
+			IMM4(target);
+			printf("%04d: JMPIFFALSE(src:%d, target:%d)\n", ofs, src, target);
+			break;
+		}
+		default:
+			assert(INVALID_OPCODE);
+			break;
+		}
+	}
 }
