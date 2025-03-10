@@ -3849,7 +3849,8 @@ rt_visit_jmpiftrue_op(
 
 	DEBUG_TRACE(*pc, "JMPIFTRUE");
 
-	assert(func->bytecode[*pc] == ROP_JMPIFTRUE);
+	assert(func->bytecode[*pc] == ROP_JMPIFTRUE ||
+	       func->bytecode[*pc] == ROP_JMPIFEQ);
 
 	if (*pc + 1 + 2 + 4 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
@@ -4031,6 +4032,11 @@ rt_visit_op(
 		if (!rt_visit_eq_op(rt, func, pc))
 			return false;
 		break;
+	case ROP_EQI:
+		/* Same as EQ. EQI is an optimization hint for JIT-compiler. */
+		if (!rt_visit_eq_op(rt, func, pc))
+			return false;
+		break;
 	case ROP_NEQ:
 		if (!rt_visit_neq_op(rt, func, pc))
 			return false;
@@ -4089,6 +4095,11 @@ rt_visit_op(
 		break;
 	case ROP_JMPIFFALSE:
 		if (!rt_visit_jmpiffalse_op(rt, func, pc))
+			return false;
+		break;
+	case ROP_JMPIFEQ:
+		/* Same as JMPIFTRUE. (JMPIFEQ is an optimization hint for JIT-compiler.) */
+		if (!rt_visit_jmpiftrue_op(rt, func, pc))
 			return false;
 		break;
 	default:

@@ -432,7 +432,7 @@ lir_visit_for_range_block(
 	loop_addr = bytecode_top;
 	if (!lir_increment_tmpvar(&cmp_tmpvar))
 		return false;
-	if (!lir_put_opcode(LOP_EQ))
+	if (!lir_put_opcode(LOP_EQI))
 		return false;
 	if (!lir_put_tmpvar(cmp_tmpvar))
 		return false;
@@ -440,7 +440,7 @@ lir_visit_for_range_block(
 		return false;
 	if (!lir_put_tmpvar(stop_tmpvar))
 		return false;
-	if (!lir_put_opcode(LOP_JMPIFTRUE))
+	if (!lir_put_opcode(LOP_JMPIFEQ))
 		return false;
 	if (!lir_put_tmpvar(cmp_tmpvar))
 		return false;
@@ -547,7 +547,7 @@ lir_visit_for_kv_block(
 
 	/* Put a loop header. */
 	loop_addr = bytecode_top;		/* LOOP: */
-	if (!lir_put_opcode(LOP_EQ)) 		/*  if i == size then break */
+	if (!lir_put_opcode(LOP_EQI)) 		/*  if i == size then break */
 		return false;
 	if (!lir_put_tmpvar(cmp_tmpvar))
 		return false;
@@ -555,7 +555,7 @@ lir_visit_for_kv_block(
 		return false;
 	if (!lir_put_tmpvar(size_tmpvar))
 		return false;
-	if (!lir_put_opcode(LOP_JMPIFTRUE)) 		/*  if i >= size then break */
+	if (!lir_put_opcode(LOP_JMPIFEQ)) 		/*  if i == size then break */
 		return false;
 	if (!lir_put_tmpvar(cmp_tmpvar))
 		return false;
@@ -681,7 +681,7 @@ lir_visit_for_v_block(
 
 	/* Put a loop header. */
 	loop_addr = bytecode_top;		/* LOOP: */
-	if (!lir_put_opcode(LOP_EQ)) 		/*  if i == size then break */
+	if (!lir_put_opcode(LOP_EQI)) 		/*  if i == size then break */
 		return false;
 	if (!lir_put_tmpvar(cmp_tmpvar))
 		return false;
@@ -689,7 +689,7 @@ lir_visit_for_v_block(
 		return false;
 	if (!lir_put_tmpvar(size_tmpvar))
 		return false;
-	if (!lir_put_opcode(LOP_JMPIFTRUE))
+	if (!lir_put_opcode(LOP_JMPIFEQ))
 		return false;
 	if (!lir_put_tmpvar(cmp_tmpvar))
 		return false;
@@ -1869,6 +1869,17 @@ lir_dump(
 			printf("%04d: EQ(dst:%d, src1:%d, src2:%d)\n", ofs, dst, src1, src2);
 			break;
 		}
+		case LOP_EQI:
+		{
+			int dst;
+			int src1;
+			int src2;
+			IMM2(dst);
+			IMM2(src1);
+			IMM2(src2);
+			printf("%04d: EQI(dst:%d, src1:%d, src2:%d)\n", ofs, dst, src1, src2);
+			break;
+		}
 		//case LOP_NEQ:
 		case LOP_LOADARRAY:
 		{
@@ -1985,6 +1996,15 @@ lir_dump(
 			IMM2(src);
 			IMM4(target);
 			printf("%04d: JMPIFFALSE(src:%d, target:%d)\n", ofs, src, target);
+			break;
+		}
+		case LOP_JMPIFEQ:
+		{
+			int src;
+			int target;
+			IMM2(src);
+			IMM4(target);
+			printf("%04d: JMPIFEQ(src:%d, target:%d)\n", ofs, src, target);
 			break;
 		}
 		default:

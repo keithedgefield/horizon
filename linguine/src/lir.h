@@ -28,7 +28,7 @@ enum bytecode {
 	LOP_DCONST,		/* 0x06: dst = empty dictionary */
 
 	/* tmpvar calc (dst = op src1) */
-	LOP_INC,		/* 0x07: dst = src + 1 */
+	LOP_INC,		/* 0x07: dst = src + 1, assume operands are integers */
 	LOP_NEG,		/* 0x08: dst = ~src */
 
 	/* tmpvar calc (dst = src1 op src2) */
@@ -46,33 +46,35 @@ enum bytecode {
 	LOP_GTE,		/* 0x14: dst = src1 >= src2 [0 or 1] */
 	LOP_EQ,			/* 0x15: dst = src1 == src2 [0 or 1] */
 	LOP_NEQ,		/* 0x16: dst = src1 != src2 [0 or 1] */
+	LOP_EQI,		/* 0x17: dst = src1 == src2 [0 or 1], assume operands are integers */
 
 	/* array/dictionary */
-	LOP_LOADARRAY,		/* 0x17: dst = src1[src2] */
-	LOP_STOREARRAY,		/* 0x18: opr1[opr2] = op3 */
-	LOP_LEN,		/* 0x19: dst = len(src) */
+	LOP_LOADARRAY,		/* 0x18: dst = src1[src2] */
+	LOP_STOREARRAY,		/* 0x19: opr1[opr2] = op3 */
+	LOP_LEN,		/* 0x1a: dst = len(src) */
 
 	/* dictionary */
-	LOP_GETDICTKEYBYINDEX,	/* 0x1a: dst = src1.keyAt(src2) */
-	LOP_GETDICTVALBYINDEX,	/* 0x1b: dst = src1.valAt(src2) */
-	LOP_STOREDOT,		/* 0x1c: obj.access = src */
-	LOP_LOADDOT,		/* 0x1d: dst = obj.access */
+	LOP_GETDICTKEYBYINDEX,	/* 0x1b: dst = src1.keyAt(src2) */
+	LOP_GETDICTVALBYINDEX,	/* 0x1c: dst = src1.valAt(src2) */
+	LOP_STOREDOT,		/* 0x1d: obj.access = src */
+	LOP_LOADDOT,		/* 0x1e: dst = obj.access */
 
 	/* symbol */
-	LOP_STORESYMBOL,	/* 0x1e: setSymbol(dst, src) */
-	LOP_LOADSYMBOL,		/* 0x1f: dst = getSymbol(src) */
+	LOP_STORESYMBOL,	/* 0x1f: setSymbol(dst, src) */
+	LOP_LOADSYMBOL,		/* 0x20: dst = getSymbol(src) */
 
 	/* call */
-	LOP_CALL,		/* 0x20: func(arg1, ...) */
-	LOP_THISCALL,		/* 0x21: obj->func(arg1, ...) */
+	LOP_CALL,		/* 0x21: func(arg1, ...) */
+	LOP_THISCALL,		/* 0x22: obj->func(arg1, ...) */
 
 	/* branch */
-	LOP_JMP,		/* 0x22: PC = src */
-	LOP_JMPIFTRUE,		/* 0x23: PC = src1 if src2 == 1 */
-	LOP_JMPIFFALSE,		/* 0x24: PC = src1 if src2 != 1 */
+	LOP_JMP,		/* 0x23: PC = src */
+	LOP_JMPIFTRUE,		/* 0x24: PC = src1 if src2 == 1 */
+	LOP_JMPIFFALSE,		/* 0x25: PC = src1 if src2 != 1 */
+	LOP_JMPIFEQ,		/* 0x25: PC = src1 if src2 indicates eq */
 
 	/* line number */
-	LOP_LINEINFO,		/* 0x25: setDebugLine(src) */
+	LOP_LINEINFO,		/* 0x26: setDebugLine(src) */
 };
 
 struct hir_block;

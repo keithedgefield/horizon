@@ -43,21 +43,23 @@ enum rt_bytecode {
 	ROP_GTE,		/* 0x14: dst = src1 >= src2 [0 or 1] */
 	ROP_EQ,			/* 0x15: dst = src1 == src2 [0 or 1] */
 	ROP_NEQ,		/* 0x16: dst = src1 != src2 [0 or 1] */
-	ROP_LOADARRAY,		/* 0x17: dst = src1[src2] */
-	ROP_STOREARRAY,		/* 0x18: opr1[opr2] = op3 */
-	ROP_LEN,		/* 0x19: dst = len(src) */
-	ROP_GETDICTKEYBYINDEX,	/* 0x1a: dst = src1.keyAt(src2) */
-	ROP_GETDICTVALBYINDEX,	/* 0x1b: dst = src1.valAt(src2) */
-	ROP_STOREDOT,		/* 0x1c: obj.access = src */
-	ROP_LOADDOT,		/* 0x1d: dst = obj.access */
-	ROP_STORESYMBOL,	/* 0x1e: setSymbol(dst, src) */
-	ROP_LOADSYMBOL,		/* 0x1f: dst = getSymbol(src) */
-	ROP_CALL,		/* 0x20: func(arg1, ...) */
-	ROP_THISCALL,		/* 0x21: obj->func(arg1, ...) */
-	ROP_JMP,		/* 0x22: PC = src */
-	ROP_JMPIFTRUE,		/* 0x23: PC = src1 if src2 == 1 */
-	ROP_JMPIFFALSE,		/* 0x24: PC = src1 if src2 != 1 */
-	ROP_LINEINFO,		/* 0x25: setDebugLine(src) */
+	ROP_EQI,		/* 0x17: dst = src1 == src2 [0 or 1], integers */
+	ROP_LOADARRAY,		/* 0x18: dst = src1[src2] */
+	ROP_STOREARRAY,		/* 0x19: opr1[opr2] = op3 */
+	ROP_LEN,		/* 0x1a: dst = len(src) */
+	ROP_GETDICTKEYBYINDEX,	/* 0x1b: dst = src1.keyAt(src2) */
+	ROP_GETDICTVALBYINDEX,	/* 0x1c: dst = src1.valAt(src2) */
+	ROP_STOREDOT,		/* 0x1d: obj.access = src */
+	ROP_LOADDOT,		/* 0x1e: dst = obj.access */
+	ROP_STORESYMBOL,	/* 0x1f: setSymbol(dst, src) */
+	ROP_LOADSYMBOL,		/* 0x20: dst = getSymbol(src) */
+	ROP_CALL,		/* 0x21: func(arg1, ...) */
+	ROP_THISCALL,		/* 0x22: obj->func(arg1, ...) */
+	ROP_JMP,		/* 0x23: PC = src */
+	ROP_JMPIFTRUE,		/* 0x24: PC = src1 if src2 == 1 */
+	ROP_JMPIFFALSE,		/* 0x25: PC = src1 if src2 != 1 */
+	ROP_JMPIFEQ,		/* 0x25: PC = src1 if src2 indicates eq */
+	ROP_LINEINFO,		/* 0x26: setDebugLine(src) */
 };
 
 enum rt_value_type {

@@ -493,6 +493,22 @@ jit_put_lsl4(
 	return true;
 }
 
+/* cmp_reg */
+#define CMP_REG(ra, rb)		if (!jit_put_cmp_reg(ctx, ra, rb)) return false
+static bool
+jit_put_cmp_reg(
+	struct jit_context *ctx,
+	int ra,
+	int rb)
+{
+	if (!jit_put_word(ctx,
+			  0xeb00001f |			/* add */
+			  (ra << 5) |			/* rs */
+			  (rb << 16)))	/* imm */
+		return false;
+	return true;
+}
+
 /* cmp_imm */
 #define CMP_IMM(rs, imm)		if (!jit_put_cmp_imm(ctx, rs, imm)) return false
 static bool
@@ -1301,6 +1317,49 @@ jit_visit_gt_op(
 	return true;
 }
 
+/* Visit a ROP_EQI instruction. */
+static INLINE bool
+jit_visit_eqi_op(
+	struct jit_context *ctx)
+{
+	int dst;
+	int src1;
+	int src2;
+
+	CONSUME_TMPVAR(dst);
+	CONSUME_TMPVAR(src1);
+	CONSUME_TMPVAR(src2);
+
+	/*
+	 * rt->frame->tmpvar[dst].type = RT_VALULE_INT;
+	 * rt->frame->tmpvar[dst].val.i = rt->frame->tmpvar[src1].val.i -
+	 *                                rt->frame->tmpvar[src2].val.i;
+	 */
+	ASM {
+		/* x2 = &rt->frame->tmpvar[dst] */
+		MOVZ	(REG_X2, IMM16(dst), LSL_0);	/* dst */
+		LSL_4	(REG_X2, REG_X2);		/* dst * sizeof(struct rt_value) */
+		ADD	(REG_X2, REG_X2, REG_X1);
+
+		/* x3 = &rt->frame->tmpvar[src1].val.i */
+		MOVZ	(REG_X3, IMM16(src1), LSL_0);	/* src1 */
+		LSL_4	(REG_X3, REG_X3);		/* src1 * sizeof(struct rt_value) */
+		ADD	(REG_X3, REG_X3, REG_X1);
+		LDR_IMM	(REG_X3, REG_X3, 8);
+
+		/* x4 = &rt->frame->tmpvar[src2] */
+		MOVZ	(REG_X4, IMM16(src2), LSL_0);	/* src1 */
+		LSL_4	(REG_X4, REG_X4);		/* src1 * sizeof(struct rt_value) */
+		ADD	(REG_X4, REG_X4, REG_X1);
+		LDR_IMM	(REG_X4, REG_X4, 8);
+
+		/* dst = src1 - src2 */
+		CMP_REG	(REG_X3, REG_X4);
+	}
+
+	return true;
+}
+
 /* Visit a ROP_LOADARRAY instruction. */
 static INLINE bool
 jit_visit_loadarray_op(
@@ -1839,6 +1898,35 @@ jit_visit_jmpiffalse_op(
 	return true;
 }
 
+/* Visit a ROP_JMPIFEQ instruction. */
+static inline bool
+jit_visit_jmpifeq_op(
+	struct jit_context *ctx)
+{
+	int src;
+	uint32_t target_lpc;
+
+	CONSUME_TMPVAR(src);
+	CONSUME_IMM32(target_lpc);
+	if (target_lpc >= ctx->func->bytecode_size + 1) {
+		rt_error(ctx->rt, BROKEN_BYTECODE);
+		return false;
+	}
+
+	/* Patch later. */
+	ctx->branch_patch[ctx->branch_patch_count].code = ctx->code;
+	ctx->branch_patch[ctx->branch_patch_count].lpc = target_lpc;
+	ctx->branch_patch[ctx->branch_patch_count].type = PATCH_BEQ;
+	ctx->branch_patch_count++;
+
+	ASM {
+		/* Patched later. */
+		BEQ	(IMM19(0));
+	}
+
+	return true;
+}
+
 /* Visit a bytecode of a function. */
 bool
 jit_visit_bytecode(
@@ -2006,6 +2094,10 @@ jit_visit_bytecode(
 			if (!jit_visit_gt_op(ctx))
 				return false;
 			break;
+		case ROP_EQI:
+			if (!jit_visit_eqi_op(ctx))
+				return false;
+			break;
 		case ROP_LOADARRAY:
 			if (!jit_visit_loadarray_op(ctx))
 				return false;
@@ -2060,6 +2152,10 @@ jit_visit_bytecode(
 			break;
 		case ROP_JMPIFFALSE:
 			if (!jit_visit_jmpiffalse_op(ctx))
+				return false;
+			break;
+		case ROP_JMPIFEQ:
+			if (!jit_visit_jmpifeq_op(ctx))
 				return false;
 			break;
 		default:

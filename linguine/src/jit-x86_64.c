@@ -858,6 +858,41 @@ jit_visit_gte_op(
 	return true;
 }
 
+/* Visit a ROP_EQI instruction. */
+static INLINE bool
+jit_visit_eqi_op(
+	struct jit_context *ctx)
+{
+	int dst;
+	int src1;
+	int src2;
+
+	CONSUME_TMPVAR(dst);
+	CONSUME_TMPVAR(src1);
+	CONSUME_TMPVAR(src2);
+
+	/* if (!jit_gte_helper(rt, dst, src1, src2)) return false; */
+	ASM {
+		/* movq dst, %rax */		IB(0x48); IB(0xc7); IB(0xc0); ID(dst);
+		/* shlq $4, %rax */		IB(0x48); IB(0xc1); IB(0xe0); IB(0x04);
+		/* addq %r15, %rax */		IB(0x4c); IB(0x01); IB(0xf8);
+
+		/* movq src1, %rbx */		IB(0x48); IB(0xc7); IB(0xc3); ID(dst);
+		/* shlq $4, %rbx */		IB(0x48); IB(0xc1); IB(0xe3); IB(0x04);
+		/* addq %r15, %rbx */		IB(0x4c); IB(0x01); IB(0xfb);
+		
+		/* movq src2, %rcx */		IB(0x48); IB(0xc7); IB(0xc1); ID(dst);
+		/* shlq $4, %rcx */		IB(0x48); IB(0xc1); IB(0xe1); IB(0x04);
+		/* addq %r15, %rcx */		IB(0x4c); IB(0x01); IB(0xf9);
+
+		/* movq 8(%rbx), %r8 */		IB(0x4c); IB(0x8b); IB(0x43); IB(0x08);
+		/* movq 8(%rcx), %r9 */		IB(0x4c); IB(0x8b); IB(0x49); IB(0x08);
+		/* cmpq %r8, %r9 */		IB(0x4d); IB(0x39); IB(0xc1);
+	}
+
+	return true;
+}
+
 /* Visit a ROP_GT instruction. */
 static INLINE bool
 jit_visit_gt_op(
@@ -1336,6 +1371,35 @@ jit_visit_jmpiffalse_op(
 	return true;
 }
 
+/* Visit a ROP_JMPIFTRUE instruction. */
+static inline bool
+jit_visit_jmpifeq_op(
+	struct jit_context *ctx)
+{
+	int src;
+	uint32_t target_lpc;
+
+	CONSUME_TMPVAR(src);
+	CONSUME_IMM32(target_lpc);
+	if (target_lpc >= ctx->func->bytecode_size + 1) {
+		rt_error(ctx->rt, BROKEN_BYTECODE);
+		return false;
+	}
+
+	/* Patch later. */
+	ctx->branch_patch[ctx->branch_patch_count].code = ctx->code;
+	ctx->branch_patch[ctx->branch_patch_count].lpc = target_lpc;
+	ctx->branch_patch[ctx->branch_patch_count].type = PATCH_JE;
+	ctx->branch_patch_count++;
+
+	ASM {
+		/* Patched later. */
+		/* je 6 */				IB(0x0f); IB(0x84); ID(0);
+	}
+
+	return true;
+}
+
 /* Visit a bytecode of a function. */
 bool
 jit_visit_bytecode(
@@ -1494,6 +1558,10 @@ jit_visit_bytecode(
 			if (!jit_visit_gt_op(ctx))
 				return false;
 			break;
+		case ROP_EQI:
+			if (!jit_visit_eqi_op(ctx))
+				return false;
+			break;
 		case ROP_LOADARRAY:
 			if (!jit_visit_loadarray_op(ctx))
 				return false;
@@ -1548,6 +1616,10 @@ jit_visit_bytecode(
 			break;
 		case ROP_JMPIFFALSE:
 			if (!jit_visit_jmpiffalse_op(ctx))
+				return false;
+			break;
+		case ROP_JMPIFEQ:
+			if (!jit_visit_jmpifeq_op(ctx))
 				return false;
 			break;
 		default:
