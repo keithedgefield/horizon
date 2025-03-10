@@ -1559,7 +1559,7 @@ jit_visit_bytecode(
 				return false;
 			break;
 		case ROP_EQI:
-			if (!jit_visit_eq_op(ctx))
+			if (!jit_visit_eqi_op(ctx))
 				return false;
 			break;
 		case ROP_LOADARRAY:
@@ -1619,7 +1619,7 @@ jit_visit_bytecode(
 				return false;
 			break;
 		case ROP_JMPIFEQ:
-			if (!jit_visit_jmpiftrue_op(ctx))
+			if (!jit_visit_jmpifeq_op(ctx))
 				return false;
 			break;
 		default:

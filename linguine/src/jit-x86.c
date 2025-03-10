@@ -920,15 +920,15 @@ jit_visit_eqi_op(
 
 		/* movl $src1, %eax */		IB(0xb8); ID(src1);
 		/* shll $3, %eax */		IB(0xc1); IB(0xe0); IB(0x03);
-		/* addl -4(%ebp), %eax */		IB(0x03); IB(0x45); IB(0xfc);
+		/* addl -4(%ebp), %eax */	IB(0x03); IB(0x45); IB(0xfc);
 
 		/* movl $src2, %ebx */		IB(0xbb); ID(src2);
 		/* shll $3, %ebx */		IB(0xc1); IB(0xe3); IB(0x03);
-		/* addl -4(%ebp), %eax */		IB(0x03); IB(0x45); IB(0xfc);
+		/* addl -4(%ebp), %ebx */	IB(0x03); IB(0x5d); IB(0xfc);
 
 		/* movl 4(%eax), %ecx */	IB(0x8b); IB(0x48); IB(0x04);
 		/* movl 4(%ebx), %edx */	IB(0x8b); IB(0x53); IB(0x04);
-		/* cmpq %ecx, %edx */		IB(0x39); IB(0xca);
+		/* cmpl %ecx, %edx */		IB(0x39); IB(0xca);
 	}
 
 	return true;
@@ -1628,7 +1628,7 @@ jit_visit_bytecode(
 				return false;
 			break;
 		case ROP_EQI:
-			if (!jit_visit_eq_op(ctx))
+			if (!jit_visit_eqi_op(ctx))
 				return false;
 			break;
 		case ROP_LOADARRAY:
@@ -1688,7 +1688,7 @@ jit_visit_bytecode(
 				return false;
 			break;
 		case ROP_JMPIFEQ:
-			if (!jit_visit_jmpiftrue_op(ctx))
+			if (!jit_visit_jmpifeq_op(ctx))
 				return false;
 			break;
 		default:
