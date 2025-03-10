@@ -799,8 +799,10 @@ jit_visit_assign_op(
 		ADD	(REG_X3, REG_X3, REG_X1);
 
 		/* *dst_addr = *src_addr */
-		LDP	(REG_X4, REG_X5, REG_X3, 0);
-		STP	(REG_X4, REG_X5, REG_X2, 0);
+		LDR_IMM	(REG_X4, REG_X3, 0);
+		LDR_IMM	(REG_X5, REG_X3, 8);
+		STR_IMM	(REG_X4, REG_X2, 0);
+		STR_IMM	(REG_X5, REG_X2, 8);
 	}
 
 	return true;
@@ -1780,18 +1782,18 @@ jit_visit_jmpiftrue_op(
 		LDR_IMM	(REG_X3, REG_X2, IMM9(8));
 
 		/* Compare: rt->frame->tmpvar[dst].val.i == 1 */
-		CMP_IMM	(REG_X3, IMM12(1));
+		CMP_IMM	(REG_X3, IMM12(0));
 	}
-	
+
 	/* Patch later. */
 	ctx->branch_patch[ctx->branch_patch_count].code = ctx->code;
 	ctx->branch_patch[ctx->branch_patch_count].lpc = target_lpc;
-	ctx->branch_patch[ctx->branch_patch_count].type = PATCH_BEQ;
+	ctx->branch_patch[ctx->branch_patch_count].type = PATCH_BNE;
 	ctx->branch_patch_count++;
 
 	ASM {
 		/* Patched later. */
-		BEQ	(IMM19(0));
+		BNE	(IMM19(0));
 	}
 
 	return true;
@@ -1820,18 +1822,18 @@ jit_visit_jmpiffalse_op(
 		LDR_IMM	(REG_X3, REG_X2, IMM9(8));
 
 		/* Compare: rt->frame->tmpvar[dst].val.i == 0 */
-		CMP_IMM	(REG_X3, IMM12(1));
+		CMP_IMM	(REG_X3, IMM12(0));
 	}
 	
 	/* Patch later. */
 	ctx->branch_patch[ctx->branch_patch_count].code = ctx->code;
 	ctx->branch_patch[ctx->branch_patch_count].lpc = target_lpc;
-	ctx->branch_patch[ctx->branch_patch_count].type = PATCH_BNE;
+	ctx->branch_patch[ctx->branch_patch_count].type = PATCH_BEQ;
 	ctx->branch_patch_count++;
 
 	ASM {
 		/* Patched later. */
-		BNE	(IMM19(0));
+		BEQ	(IMM19(0));
 	}
 
 	return true;
@@ -1906,6 +1908,8 @@ jit_visit_bytecode(
 		ctx->pc_entry[ctx->pc_entry_count].lpc = ctx->lpc;
 		ctx->pc_entry[ctx->pc_entry_count].code = ctx->code;
 		ctx->pc_entry_count++;
+
+		printf("[JIT] PC=%d\n", ctx->lpc);
 
 		/* Dispatch by opcode. */
 		CONSUME_OPCODE(opcode);

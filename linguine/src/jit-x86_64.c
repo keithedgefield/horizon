@@ -45,6 +45,7 @@
 /* Branch patch type */
 #define PATCH_JMP		0
 #define PATCH_JE		1
+#define PATCH_JNE		2
 
 /* JIT codegen context */
 struct jit_context {
@@ -1318,7 +1319,7 @@ jit_visit_jmpiffalse_op(
 		/* movl 8(%rdx), %eax */		IB(0x8b); IB(0x42); IB(0x08);
 
 		/* Compare: rt->frame->tmpvar[dst].val.i == 1 */
-		/* cmpl $0, %eax */			IB(0x83); IB(0xf8); IB(0x00);
+		/* cmpl $1, %eax */			IB(0x83); IB(0xf8); IB(0x00);
 	}
 	
 	/* Patch later. */
@@ -1329,7 +1330,7 @@ jit_visit_jmpiffalse_op(
 
 	ASM {
 		/* Patched later. */
-		/* je 6 */				IB(0x0f); IB(0x84); ID(0);
+		/* jne 6 */				IB(0x0f); IB(0x85); ID(0);
 	}
 
 	return true;
@@ -1615,6 +1616,13 @@ jit_patch_branch(
 			/* je offset */
 			IB(0x0f);
 			IB(0x84);
+			ID(((intptr_t)target_code - (intptr_t)ctx->code));
+		}
+	} else if (ctx->branch_patch[patch_index].type == PATCH_JNE) {
+		ASM {
+			/* jne offset */
+			IB(0x0f);
+			IB(0x85);
 			ID(((intptr_t)target_code - (intptr_t)ctx->code));
 		}
 	}

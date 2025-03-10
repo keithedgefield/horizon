@@ -35,7 +35,11 @@
 #define BROKEN_BYTECODE		"Broken bytecode."
 
 /* Debug trace */
+#if 0
 #define DEBUG_TRACE(pc, op)	printf("[TRACE] pc=%d, opcode=%s\n", pc, op)
+#else
+#define DEBUG_TRACE(pc, op)
+#endif
 
 /*
  * Config

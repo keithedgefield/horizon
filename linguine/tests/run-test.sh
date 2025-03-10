@@ -2,11 +2,11 @@
 
 set -eu
 
-cp ../build/linux/linguine .
+cp ../build/macos/linguine .
 
 for f in syntax/*.ls; do
     echo -n "Running $f ... "
-    ./linguine $f > out
+    ./linguine -i $f > out
     diff $f.out out
     rm out
     echo "ok."

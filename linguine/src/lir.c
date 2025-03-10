@@ -22,6 +22,10 @@
 #define NEVER_COME_HERE		0
 #define INVALID_OPCODE		0
 
+/* Debug print */
+#define DEBUG_BLOCK_ORDER
+#define DEBUG_DUMP_LIR
+
 /*
  * Target LIR.
  */
@@ -147,12 +151,12 @@ lir_build(
 		lir_visit_block(cur_block);
 
 		/* Move to a next. */
-		cur_block = cur_block->succ;
 		if (cur_block->stop) {
-		//if (cur_block->type == HIR_BLOCK_END) {
-			cur_block->addr = bytecode_top;
+			assert(cur_block->succ->type == HIR_BLOCK_END);
+			cur_block->succ->addr = bytecode_top;
 			break;
 		}
+		cur_block = cur_block->succ;
 	}
 
 	/* Patch block address. */
@@ -200,7 +204,9 @@ lir_build(
 
 	(*lir_func)->tmpvar_size = tmpvar_count;
 
+#ifdef DEBUG_DUMP_LIR
 	lir_dump(*lir_func);
+#endif
 
 	return true;
 }
@@ -211,7 +217,9 @@ lir_visit_block(
 {
 	assert(block != NULL);
 
+#ifdef DEBUG_BLOCK_ORDER
 	printf("LIR-pass: BLOCK %d\n", block->id);
+#endif
 
 	switch (block->type) {
 	case HIR_BLOCK_BASIC:
@@ -539,7 +547,7 @@ lir_visit_for_kv_block(
 
 	/* Put a loop header. */
 	loop_addr = bytecode_top;		/* LOOP: */
-	if (!lir_put_opcode(LOP_GTE)) 		/*  if i >= size then break */
+	if (!lir_put_opcode(LOP_EQ)) 		/*  if i == size then break */
 		return false;
 	if (!lir_put_tmpvar(cmp_tmpvar))
 		return false;
@@ -673,7 +681,7 @@ lir_visit_for_v_block(
 
 	/* Put a loop header. */
 	loop_addr = bytecode_top;		/* LOOP: */
-	if (!lir_put_opcode(LOP_GTE)) 		/*  if i >= size then break */
+	if (!lir_put_opcode(LOP_EQ)) 		/*  if i == size then break */
 		return false;
 	if (!lir_put_tmpvar(cmp_tmpvar))
 		return false;
@@ -1730,7 +1738,7 @@ lir_out_of_memory(void)
 #define IMM1(d)		{ d = (*pc); pc += 1; }
 #define IMM2(d)		{ d = ((*pc) << 8) | *(pc + 1); pc += 2; }
 #define IMM4(d)		{ d = ((*pc) << 24) | ((*(pc + 1)) << 16) | ((*(pc + 2)) << 8) | *(pc + 3); pc += 4; }
-#define IMMS(d)		{ d = pc; pc += strlen(pc) + 1; }
+#define IMMS(d)		{ d = (const char *)pc; pc += strlen((const char *)pc) + 1; }
 
 void
 lir_dump(
@@ -1776,10 +1784,40 @@ lir_dump(
 			printf("%04d: ICONST(dst:%d, val:%d)\n", ofs, dst, val);
 			break;
 		}
-		//case LOP_FCONST:
-		//case LOP_SCONST:
-		//case LOP_ACONST:
-		//case LOP_DCONST:
+		case LOP_FCONST:
+		{
+			int dst;
+			uint32_t val;
+			float val_f;
+			IMM2(dst);
+			IMM4(val);
+			val_f = *(float *)&val;
+			printf("%04d: FCONST(dst:%d, val:%f)\n", ofs, dst, val_f);
+			break;
+		}
+		case LOP_SCONST:
+		{
+			int dst;
+			const char *val;
+			IMM2(dst);
+			IMMS(val);
+			printf("%04d: SCONST(dst:%d, val:%s)\n", ofs, dst, val);
+			break;
+		}
+		case LOP_ACONST:
+		{
+			int dst;
+			IMM2(dst);
+			printf("%04d: ACONST(dst:%d)\n", ofs, dst);
+			break;
+		}
+		case LOP_DCONST:
+		{
+			int dst;
+			IMM2(dst);
+			printf("%04d: DCONST(dst:%d)\n", ofs, dst);
+			break;
+		}
 		case LOP_INC:
 		{
 			int dst;
@@ -1788,7 +1826,17 @@ lir_dump(
 			break;
 		}
 		//case LOP_NEG:
-		//case LOP_ADD:
+		case LOP_ADD:
+		{
+			int dst;
+			int src1;
+			int src2;
+			IMM2(dst);
+			IMM2(src1);
+			IMM2(src2);
+			printf("%04d: ADD(dst:%d, src1:%d, src2: %d)\n", ofs, dst, src1, src2);
+			break;
+		}
 		//case LOP_SUB:
 		//case LOP_MUL:
 		//case LOP_DIV:
@@ -1799,7 +1847,17 @@ lir_dump(
 		//case LOP_LT:
 		//case LOP_LTE:
 		//case LOP_GT:
-		//case LOP_GTE:
+		case LOP_GTE:
+		{
+			int dst;
+			int src1;
+			int src2;
+			IMM2(dst);
+			IMM2(src1);
+			IMM2(src2);
+			printf("%04d: GTE(dst:%d, src1:%d, src2:%d)\n", ofs, dst, src1, src2);
+			break;
+		}
 		case LOP_EQ:
 		{
 			int dst;
@@ -1812,11 +1870,59 @@ lir_dump(
 			break;
 		}
 		//case LOP_NEQ:
-		//case LOP_LOADARRAY:
-		//case LOP_STOREARRAY:
-		//case LOP_LEN:
-		//case LOP_GETDICTKEYBYINDEX:
-		//case LOP_GETDICTVALBYINDEX:
+		case LOP_LOADARRAY:
+		{
+			int dst;
+			int src1;
+			int src2;
+			IMM2(dst);
+			IMM2(src1);
+			IMM2(src2);
+			printf("%04d: LOADARRAY(dst:%d, arr:%d, subsc:%d)\n", ofs, dst, src1, src2);
+			break;
+		}
+		case LOP_STOREARRAY:
+		{
+			int dst;
+			int src1;
+			int src2;
+			IMM2(dst);
+			IMM2(src1);
+			IMM2(src2);
+			printf("%04d: STOREARRAY(arr:%d, subsc:%d, val:%d)\n", ofs, dst, src1, src2);
+			break;
+		}
+		case LOP_LEN:
+		{
+			int dst;
+			int src;
+			IMM2(dst);
+			IMM2(src);
+			printf("%04d: LEN(dst:%d, src:%d)\n", ofs, dst, src);
+			break;
+		}
+		case LOP_GETDICTKEYBYINDEX:
+		{
+			int dst;
+			int dict;
+			int index;
+			IMM2(dst);
+			IMM2(dict);
+			IMM2(index);
+			printf("%04d: GETDICTKEYBYINDEX(dst:%d, dict:%d, index:%d)\n", ofs, dst, dict, index);
+			break;
+		}
+		case LOP_GETDICTVALBYINDEX:
+		{
+			int dst;
+			int dict;
+			int index;
+			IMM2(dst);
+			IMM2(dict);
+			IMM2(index);
+			printf("%04d: GETDICTKEYBYINDEX(dst:%d, dict:%d, index:%d)\n", ofs, dst, dict, index);
+			break;
+		}
 		//case LOP_STOREDOT:
 		//case LOP_LOADDOT:
 		case LOP_STORESYMBOL:
@@ -1828,8 +1934,33 @@ lir_dump(
 			printf("%04d: STORESYMBOL(symbol:%s, src:%d)\n", ofs, symbol, src);
 			break;
 		}
-		//case LOP_LOADSYMBOL:
-		//case LOP_CALL:
+		case LOP_LOADSYMBOL:
+		{
+			int dst;
+			const char *symbol;
+			IMM2(dst);
+			IMMS(symbol);
+			printf("%04d: LOADSYMBOL(src: %d, symbol:%s)\n", ofs, dst, symbol);
+			break;
+		}
+		case LOP_CALL:
+		{
+			int dst;
+			int func;
+			int arg_count;
+			int arg;
+			int i;
+			IMM2(dst);
+			IMM2(func);
+			IMM1(arg_count);
+			printf("%04d: CALL(dst: %d, arg_count:%d", ofs, dst, arg_count);
+			for (i = 0; i < arg_count; i++) {
+				IMM2(arg);
+				printf(", %d", arg);
+			}
+			printf(")\n");
+			break;
+		}
 		//case LOP_THISCALL:
 		case LOP_JMP:
 		{
