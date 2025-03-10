@@ -333,9 +333,9 @@ jit_get_opr_string(
 #define ASM_BINARY_OP(f)											\
 	/* if (!f(rt, dst, src1, src2)) return false; */							\
 	ASM {													\
-		/* ebp: &rt->frame->tmpvar[0] */								\
-		/* ebp-4: rt */											\
-		/* ebp-8: exception_handler */									\
+		/* ebp-4: &rt->frame->tmpvar[0] */								\
+		/* ebp-8: rt */											\
+		/* ebp-12: exception_handler */									\
 														\
 		/* movl $src2, %eax */		IB(0xb8); ID(src2); 						\
 		/* pushl %eax */		IB(0x50);							\
@@ -346,11 +346,12 @@ jit_get_opr_string(
 		/* movl $dst, %eax */		IB(0xb8); ID(dst); 						\
 		/* pushl %eax */		IB(0x50);							\
 														\
-		/* movl -4(%ebp), %eax */	IB(0xb8); IB(0x45); IB(0xfc);					\
+		/* movl -8(%ebp), %eax */	IB(0x8b); IB(0x45); IB(0xf8);					\
 		/* pushl %eax */		IB(0x50);							\
 														\
 		/* movl $f, %eax */		IB(0xb8); ID((uint32_t)f);					\
-		/* call *%eax */		IB(0xff); IB(0x0);						\
+		/* call *%eax */		IB(0xff); IB(0xd0);						\
+		/* addl $16, %esp */		IB(0x83); IB(0xc4); IB(16);					\
 														\
 		/* cmpl $0, %eax */		IB(0x83); IB(0xf8); IB(0x00);					\
 		/* jne next */			IB(0x75); IB(0x03);						\
@@ -361,9 +362,9 @@ jit_get_opr_string(
 #define ASM_UNARY_OP(f)												\
 	/* if (!f(rt, dst, src)) return false; */								\
 	ASM {													\
-		/* ebp: &rt->frame->tmpvar[0] */								\
-		/* ebp-4: rt */											\
-		/* ebp-8: exception_handler */									\
+		/* ebp-4: &rt->frame->tmpvar[0] */								\
+		/* ebp-8: rt */											\
+		/* ebp-12: exception_handler */									\
 														\
 		/* movl $src, %eax */		IB(0xb8); ID(src); 						\
 		/* push %eax */			IB(0x50);							\
@@ -371,11 +372,12 @@ jit_get_opr_string(
 		/* movl $dst, %eax */		IB(0xb8); ID(dst); 						\
 		/* pushl %eax */		IB(0x50);							\
 														\
-		/* movl -4(%ebp), %eax */	IB(0x8b); IB(0x45); IB(0xfc);					\
+		/* movl -8(%ebp), %eax */	IB(0x8b); IB(0x45); IB(0xf8);					\
 		/* pushl %eax */		IB(0x50);							\
 														\
 		/* movl $f, %eax */		IB(0xb8); ID((uint32_t)f);					\
-		/* call *%eax */		IB(0xff); IB(0x0);						\
+		/* call *%eax */		IB(0xff); IB(0xd0);						\
+		/* addl $12, %esp */		IB(0x83); IB(0xc4); IB(12);					\
 														\
 		/* cmpl $0, %eax */		IB(0x83); IB(0xf8); IB(0x00);					\
 		/* jne next */			IB(0x75); IB(0x03);						\
@@ -399,12 +401,12 @@ jit_visit_lineinfo_op(
 
 	/* rt->line = line; */
 	ASM {
-		/* ebp: &rt->frame->tmpvar[0] */								\
-		/* ebp-4: rt */											\
-		/* ebp-8: exception_handler */									\
+		/* ebp-4: &rt->frame->tmpvar[0] */
+		/* ebp-8: rt */
+		/* ebp-12: exception_handler */
 
 		/* movl $line, %eax */		IB(0xb8); ID(line);
-		/* movl -4(%ebp), %ebx */	IB(0x8b); IB(0x5d); IB(0xfc);					\
+		/* movl -8(%ebp), %ebx */	IB(0x8b); IB(0x5d); IB(0xf8);
 		/* movl %eax, 4(%ebx) */	IB(0x89); IB(0x43); IB(0x04);
 	}
 
@@ -425,9 +427,9 @@ jit_visit_assign_op(
 
 	/* rt->frame->tmpvar[dst] = rt->frame->tmpvar[src]; */
 	ASM {
-		/* ebp: &rt->frame->tmpvar[0] */								\
-		/* ebp-4: rt */											\
-		/* ebp-8: exception_handler */									\
+		/* ebp-4: &rt->frame->tmpvar[0] */								\
+		/* ebp-8: rt */											\
+		/* ebp-12: exception_handler */									\
 
 		/* movl $dst, %eax */		IB(0xb8); ID(dst);
 		/* shll $3, %eax */		IB(0xc1); IB(0xe0); IB(0x03);
@@ -458,13 +460,13 @@ jit_visit_iconst_op(
 	/* &rt->frame->tmpvar[dst].type = RT_VALUE_INT; */
 	/* &rt->frame->tmpvar[dst].val.i = val; */
 	ASM {
-		/* ebp: &rt->frame->tmpvar[0] */								\
-		/* ebp-4: rt */											\
-		/* ebp-8: exception_handler */									\
+		/* ebp-4: &rt->frame->tmpvar[0] */								\
+		/* ebp-8: rt */											\
+		/* ebp-12: exception_handler */									\
 
 		/* movl $dst, %eax */		IB(0xb8); ID(dst);
 		/* shll $3, %eax */		IB(0xc1); IB(0xe0); IB(0x03);
-		/* addl (%ebp), %eax */		IB(0x03); IB(0x45); IB(0x00);
+		/* addl -4(%ebp), %eax */	IB(0x03); IB(0x45); IB(0xfc);
 		/* movl $0, (%eax) */		IB(0xc7); IB(0x00); ID(0);
 		/* movl $val, 4(%eax) */	IB(0xc7); IB(0x40); IB(0x04); ID(val);
 	}
@@ -486,13 +488,13 @@ jit_visit_fconst_op(
 	/* &rt->frame->tmpvar[dst].type = RT_VALUE_INT; */
 	/* &rt->frame->tmpvar[dst].val.i = val; */
 	ASM {
-		/* ebp: &rt->frame->tmpvar[0] */								\
-		/* ebp-4: rt */											\
-		/* ebp-8: exception_handler */									\
+		/* ebp-4: &rt->frame->tmpvar[0] */								\
+		/* ebp-8: rt */											\
+		/* ebp-12: exception_handler */									\
 
 		/* movl $dst, %eax */		IB(0xb8); ID(dst);
 		/* shll $3, %eax */		IB(0xc1); IB(0xe0); IB(0x03);
-		/* addl (%ebp), %eax */		IB(0x03); IB(0x45); IB(0x00);
+		/* addl -4(%ebp), %eax */	IB(0x03); IB(0x45); IB(0xfc);
 		/* movl $1, (%eax) */		IB(0xc7); IB(0x00); ID(1);
 		/* movl $val, 4(%eax) */	IB(0xc7); IB(0x40); IB(0x04); ID(val);
 	}
@@ -513,24 +515,25 @@ jit_visit_sconst_op(
 
 	/* rt_make_string(rt, &rt->frame->tmpvar[dst], val); */
 	ASM {
-		/* ebp: &rt->frame->tmpvar[0] */
-		/* ebp-4: rt */
-		/* ebp-8: exception_handler */
+		/* ebp-4: &rt->frame->tmpvar[0] */
+		/* ebp-8: rt */
+		/* ebp-12: exception_handler */
 
-		/* movl val, %eax */			IB(0xb8); ID((uint32_t)val);
+		/* movl $val, %eax */			IB(0xb8); ID((uint32_t)val);
 		/* pushl %eax */			IB(0x50);
 		/* movl $dst, %eax */			IB(0xb8); ID(dst);
 		/* shll $3, %eax */			IB(0xc1); IB(0xe0); IB(0x03);
-		/* addl (%ebp), %eax */			IB(0x03); IB(0x45); IB(0x00);
+		/* addl -4(%ebp), %eax */		IB(0x03); IB(0x45); IB(0xfc);
 		/* pushl %eax */			IB(0x50);
-		/* movl -4(%ebp), %eax */		IB(0xb8); IB(0x45); IB(0xfc);
+		/* movl -8(%ebp), %eax */		IB(0x8b); IB(0x45); IB(0xf8);
 		/* pushl %eax */			IB(0x50);
 		/* movl $rt_make_string, %eax */	IB(0xb8); ID((uint32_t)rt_make_string);
-		/* call *%eax */			IB(0xff); IB(0x0);
+		/* call *%eax */			IB(0xff); IB(0xd0);
+		/* addl $12, %esp */			IB(0x83); IB(0xc4); IB(12);
 
 		/* cmpl $0, %eax */			IB(0x83); IB(0xf8); IB(0x00);
 		/* jne next */				IB(0x75); IB(0x03);
-		/* jmp 8(%ebp) */			IB(0xff); IB(0x65); IB(0x08);
+		/* jmp -12(%ebp) */			IB(0xff); IB(0x65); IB(0xf4);
 		/* next:*/
 	}
 
@@ -548,18 +551,19 @@ jit_visit_aconst_op(
 
 	/* rt_make_empty_array(rt, &rt->frame->tmpvar[dst]); */
 	ASM {
-		/* ebp: &rt->frame->tmpvar[0] */
-		/* ebp-4: rt */
-		/* ebp-8: exception_handler */
+		/* ebp-4: &rt->frame->tmpvar[0] */
+		/* ebp-8: rt */
+		/* ebp-12: exception_handler */
 
 		/* movl $dst, %eax */			IB(0xb8); ID(dst);
 		/* shll $3, %eax */			IB(0xc1); IB(0xe0); IB(0x03);
-		/* addl (%ebp), %eax */			IB(0x03); IB(0x45); IB(0x00);
+		/* addl -4(%ebp), %eax */		IB(0x03); IB(0x45); IB(0xfc);
 		/* pushl %eax */			IB(0x50);
-		/* movl -4(%ebp), %eax */		IB(0xb8); IB(0x45); IB(0xfc);
+		/* movl -8(%ebp), %eax */		IB(0x8b); IB(0x45); IB(0xf8);
 		/* pushl %eax */			IB(0x50);
 		/* movl $rt_make_empty_array, %eax */	IB(0xb8); ID((uint32_t)rt_make_empty_array);
-		/* call *%eax */			IB(0xff); IB(0x0);
+		/* call *%eax */			IB(0xff); IB(0xd0);
+		/* addl $8, %esp */			IB(0x83); IB(0xc4); IB(8);
 
 		/* cmpl $0, %eax */			IB(0x83); IB(0xf8); IB(0x00);
 		/* jne next */				IB(0x75); IB(0x03);
@@ -582,18 +586,19 @@ jit_visit_dconst_op(
 
 	/* rt_make_empty_dict(rt, &rt->frame->tmpvar[dst]); */
 	ASM {
-		/* ebp: &rt->frame->tmpvar[0] */
-		/* ebp-4: rt */
-		/* ebp-8: exception_handler */
+		/* ebp-4: &rt->frame->tmpvar[0] */
+		/* ebp-8: rt */
+		/* ebp-12: exception_handler */
 
 		/* movl $dst, %eax */			IB(0xb8); ID(dst);
 		/* shll $3, %eax */			IB(0xc1); IB(0xe0); IB(0x03);
-		/* addl (%ebp), %eax */			IB(0x03); IB(0x45); IB(0x00);
+		/* addl -4(%ebp), %eax */	IB(0x03); IB(0x45); IB(0xfc);
 		/* pushl %eax */			IB(0x50);
-		/* movl -4(%ebp), %eax */		IB(0xb8); IB(0x45); IB(0xfc);
+		/* movl -8(%ebp), %eax */		IB(0x8b); IB(0x45); IB(0xf8);
 		/* pushl %eax */			IB(0x50);
 		/* movl $rt_make_empty_dict, %eax */	IB(0xb8); ID((uint32_t)rt_make_empty_dict);
-		/* call *%eax */			IB(0xff); IB(0x0);
+		/* call *%eax */			IB(0xff); IB(0xd0);
+		/* addl $8, %esp */			IB(0x83); IB(0xc4); IB(8);
 
 		/* cmpl $0, %eax */			IB(0x83); IB(0xf8); IB(0x00);
 		/* jne next */				IB(0x75); IB(0x03);
@@ -617,11 +622,13 @@ jit_visit_inc_op(
 
 	/* &rt->frame->tmpvar[dst].val.i++ */
 	ASM {
-		/* r15 = &rt->frame->tmpvar[0] */
+		/* ebp-4: &rt->frame->tmpvar[0] */
+		/* ebp-8: rt */
+		/* ebp-12: exception_handler */
 
 		/* movl $dst, %eax */			IB(0xb8); ID(dst);
 		/* shll $3, %eax */			IB(0xc1); IB(0xe0); IB(0x03);
-		/* addl (%ebp), %eax */			IB(0x03); IB(0x45); IB(0x00);
+		/* addl -4(%ebp), %eax */		IB(0x03); IB(0x45); IB(0xfc);
 		/* incl 4(%eax) */			IB(0xff); IB(0x40); IB(0x04);
 	}
 
@@ -907,13 +914,17 @@ jit_visit_eqi_op(
 
 	/* src1 - src2 */
 	ASM {
+		/* ebp-4: &rt->frame->tmpvar[0] */
+		/* ebp-8: rt */
+		/* ebp-12: exception_handler */
+
 		/* movl $src1, %eax */		IB(0xb8); ID(src1);
 		/* shll $3, %eax */		IB(0xc1); IB(0xe0); IB(0x03);
-		/* addl (%ebp), %eax */		IB(0x03); IB(0x45); IB(0x00);
+		/* addl -4(%ebp), %eax */		IB(0x03); IB(0x45); IB(0xfc);
 
 		/* movl $src2, %ebx */		IB(0xbb); ID(src2);
 		/* shll $3, %ebx */		IB(0xc1); IB(0xe3); IB(0x03);
-		/* addl (%ebp), %ebx */		IB(0x03); IB(0x5d); IB(0x00);
+		/* addl -4(%ebp), %eax */		IB(0x03); IB(0x45); IB(0xfc);
 
 		/* movl 4(%eax), %ecx */	IB(0x8b); IB(0x48); IB(0x04);
 		/* movl 4(%ebx), %edx */	IB(0x8b); IB(0x53); IB(0x04);
@@ -1048,18 +1059,19 @@ jit_visit_loadsymbol_op(
 
 	/* if (!rt_loadsymbol_helper(rt, dst, src)) return false; */
 	ASM {
-		/* ebp: &rt->frame->tmpvar[0] */
-		/* ebp-4: rt */
-		/* ebp-8: exception_handler */
+		/* ebp-4: &rt->frame->tmpvar[0] */
+		/* ebp-8: rt */
+		/* ebp-12: exception_handler */
 
 		/* movl $src, %eax */			IB(0xb8); ID((uint32_t)src);
 		/* push %eax */				IB(0x50);
 		/* movl $dst, %eax */			IB(0xb8); ID(dst);
 		/* pushl %eax */			IB(0x50);
-		/* movl -4(%ebp), %eax */		IB(0x8b); IB(0x45); IB(0xfc);
+		/* movl -8(%ebp), %eax */		IB(0x8b); IB(0x45); IB(0xf8);
 		/* pushl %eax */			IB(0x50);
 		/* movl $rt_loadsymbol_helper, %eax */	IB(0xb8); ID((uint32_t)rt_loadsymbol_helper);
-		/* call *%eax */			IB(0xff); IB(0x0);
+		/* call *%eax */			IB(0xff); IB(0xd0);
+		/* addl $12, %esp */			IB(0x83); IB(0xc4); IB(12);
 
 		/* cmpl $0, %eax */		IB(0x83); IB(0xf8); IB(0x00);					\
 		/* jne next */			IB(0x75); IB(0x03);						\
@@ -1083,18 +1095,19 @@ jit_visit_storesymbol_op(
 
 	/* if (!rt_storesymbol_helper(rt, dst, src)) return false; */
 	ASM {
-		/* ebp: &rt->frame->tmpvar[0] */
-		/* ebp-4: rt */
-		/* ebp-8: exception_handler */
+		/* ebp-4: &rt->frame->tmpvar[0] */
+		/* ebp-8: rt */
+		/* ebp-12: exception_handler */
 
 		/* movl $src, %eax */			IB(0xb8); ID(src);
 		/* push %eax */				IB(0x50);
 		/* movl $dst, %eax */			IB(0xb8); ID((uint32_t)dst);
 		/* pushl %eax */			IB(0x50);
-		/* movl -4(%ebp), %eax */		IB(0x8b); IB(0x45); IB(0xfc);
+		/* movl -8(%ebp), %eax */		IB(0x8b); IB(0x45); IB(0xf8);
 		/* pushl %eax */			IB(0x50);
 		/* movl $rt_storesymbol_helper, %eax */	IB(0xb8); ID((uint32_t)rt_storesymbol_helper);
-		/* call *%eax */			IB(0xff); IB(0x0);
+		/* call *%eax */			IB(0xff); IB(0xd0);
+		/* addl $12, %esp */			IB(0x83); IB(0xc4); IB(12);
 
 		/* cmpl $0, %eax */		IB(0x83); IB(0xf8); IB(0x00);					\
 		/* jne next */			IB(0x75); IB(0x03);						\
@@ -1120,9 +1133,9 @@ jit_visit_loaddot_op(
 
 	/* if (!rt_loaddot_helper(rt, dst, dict, field)) return false; */
 	ASM {
-		/* ebp: &rt->frame->tmpvar[0] */
-		/* ebp-4: rt */
-		/* ebp-8: exception_handler */
+		/* ebp-4: &rt->frame->tmpvar[0] */
+		/* ebp-8: rt */
+		/* ebp-12: exception_handler */
 
 		/* movl field, %eax */			IB(0xb8); ID((uint32_t)field);
 		/* push %eax */				IB(0x50);
@@ -1130,10 +1143,11 @@ jit_visit_loaddot_op(
 		/* push %eax */				IB(0x50);
 		/* movl $dst, %eax */			IB(0xb8); ID(dst);
 		/* pushl %eax */			IB(0x50);
-		/* movl -4(%ebp), %eax */		IB(0x8b); IB(0x45); IB(0xfc);
+		/* movl -8(%ebp), %eax */		IB(0x8b); IB(0x45); IB(0xf8);
 		/* pushl %eax */			IB(0x50);
 		/* movl $rt_loaddot_helper, %eax */	IB(0xb8); ID((uint32_t)rt_loaddot_helper);
-		/* call *%eax */			IB(0xff); IB(0x0);
+		/* call *%eax */			IB(0xff); IB(0xd0);
+		/* addl $16, %esp */			IB(0x83); IB(0xc4); IB(16);
 
 		/* cmpl $0, %eax */			IB(0x83); IB(0xf8); IB(0x00);					\
 		/* jne next */				IB(0x75); IB(0x03);						\
@@ -1159,9 +1173,9 @@ jit_visit_storedot_op(
 
 	/* if (!jit_storedot_helper(rt, dict, field, src)) return false; */
 	ASM {
-		/* ebp: &rt->frame->tmpvar[0] */
-		/* ebp-4: rt */
-		/* ebp-8: exception_handler */
+		/* ebp-4: &rt->frame->tmpvar[0] */
+		/* ebp-8: rt */
+		/* ebp-12: exception_handler */
 
 		/* movl $src, %eax */			IB(0xb8); ID(src);
 		/* push %eax */				IB(0x50);
@@ -1169,10 +1183,11 @@ jit_visit_storedot_op(
 		/* push %eax */				IB(0x50);
 		/* movl dict, %eax */			IB(0xb8); ID(dict);
 		/* push %eax */				IB(0x50);
-		/* movl -4(%ebp), %eax */		IB(0x8b); IB(0x45); IB(0xfc);
+		/* movl -8(%ebp), %eax */		IB(0x8b); IB(0x45); IB(0xf8);
 		/* pushl %eax */			IB(0x50);
 		/* movl $rt_storedot_helper, %eax */	IB(0xb8); ID((uint32_t)rt_storedot_helper);
-		/* call *%eax */			IB(0xff); IB(0x0);
+		/* call *%eax */			IB(0xff); IB(0xd0);
+		/* addl $16, %esp */			IB(0x83); IB(0xc4); IB(16);
 
 		/* cmpl $0, %eax */			IB(0x83); IB(0xf8); IB(0x00);					\
 		/* jne next */				IB(0x75); IB(0x03);						\
@@ -1218,9 +1233,9 @@ jit_visit_call_op(
 
 	/* if (!rt_call_helper(rt, dst, func, arg_count, arg)) return false; */
 	ASM {
-		/* ebp: &rt->frame->tmpvar[0] */
-		/* ebp-4: rt */
-		/* ebp-8: exception_handler */
+		/* ebp-4: &rt->frame->tmpvar[0] */
+		/* ebp-8: rt */
+		/* ebp-12: exception_handler */
 
 		/* movl $arg_addr, %eax */		IB(0xb8); ID(arg_addr);
 		/* pushl %eax */			IB(0x50);
@@ -1230,10 +1245,11 @@ jit_visit_call_op(
 		/* pushl %eax */			IB(0x50);
 		/* movl dst, %eax */			IB(0xb8); ID(dst);
 		/* pushl %eax */			IB(0x50);
-		/* movl -4(%ebp), %eax */		IB(0x8b); IB(0x45); IB(0xfc);
+		/* movl -8(%ebp), %eax */		IB(0x8b); IB(0x45); IB(0xf8);
 		/* pushl %eax */			IB(0x50);
 		/* movl $rt_call_helper, %eax */	IB(0xb8); ID((uint32_t)rt_call_helper);
-		/* call *%eax */			IB(0xff); IB(0x0);
+		/* call *%eax */			IB(0xff); IB(0xd0);
+		/* addl $20, %esp */			IB(0x83); IB(0xc4); IB(20);
 
 		/* cmpl $0, %eax */			IB(0x83); IB(0xf8); IB(0x00);					\
 		/* jne next */				IB(0x75); IB(0x03);						\
@@ -1281,9 +1297,9 @@ jit_visit_thiscall_op(
 
 	/* if (!rt_thiscall_helper(rt, dst, obj, symbol, arg_count, arg)) return false; */
 	ASM {
-		/* ebp: &rt->frame->tmpvar[0] */
-		/* ebp-4: rt */
-		/* ebp-8: exception_handler */
+		/* ebp-4: &rt->frame->tmpvar[0] */
+		/* ebp-8: rt */
+		/* ebp-12: exception_handler */
 
 		/* movl $arg_addr, %eax */		IB(0xb8); ID(arg_addr);
 		/* pushl %eax */			IB(0x50);
@@ -1295,10 +1311,11 @@ jit_visit_thiscall_op(
 		/* pushl %eax */			IB(0x50);
 		/* movl dst, %eax */			IB(0xb8); ID(dst);
 		/* pushl %eax */			IB(0x50);
-		/* movl -4(%ebp), %eax */		IB(0x8b); IB(0x45); IB(0xfc);
+		/* movl -8(%ebp), %eax */		IB(0x8b); IB(0x45); IB(0xf8);
 		/* pushl %eax */			IB(0x50);
 		/* movl $rt_thiscall_helper, %eax */	IB(0xb8); ID((uint32_t)rt_call_helper);
-		/* call *%eax */			IB(0xff); IB(0x0);
+		/* call *%eax */			IB(0xff); IB(0xd0);
+		/* addl $24, %esp */			IB(0x83); IB(0xc4); IB(24);
 
 		/* cmpl $0, %eax */			IB(0x83); IB(0xf8); IB(0x00);					\
 		/* jne next */				IB(0x75); IB(0x03);						\
@@ -1352,14 +1369,14 @@ jit_visit_jmpiftrue_op(
 	}
 
 	ASM {
-		/* ebp: &rt->frame->tmpvar[0] */
-		/* ebp-4: rt */
-		/* ebp-8: exception_handler */
+		/* ebp-4: &rt->frame->tmpvar[0] */
+		/* ebp-8: rt */
+		/* ebp-12: exception_handler */
 
 		/* movl $src, %eax */		IB(0xb8); ID(src);
 		/* shll $3, %eax */		IB(0xc1); IB(0xe0); IB(0x03);
-		/* addl (%ebp), %eax */		IB(0x03); IB(0x45); IB(0x00);
-		/* movl 4(%eax), %eax */	IB(0x4c); IB(0x89); IB(0xf1);
+		/* addl -4(%ebp), %eax */	IB(0x03); IB(0x45); IB(0xfc);
+		/* movl 4(%eax), %eax */	IB(0x8b); IB(0x40); IB(0x04);
 
 		/* Compare: rt->frame->tmpvar[dst].val.i == 0 */
 		/* cmpl $0, %eax */			IB(0x83); IB(0xf8); IB(0x00);
@@ -1395,14 +1412,14 @@ jit_visit_jmpiffalse_op(
 	}
 
 	ASM {
-		/* ebp: &rt->frame->tmpvar[0] */
-		/* ebp-4: rt */
-		/* ebp-8: exception_handler */
+		/* ebp-4: &rt->frame->tmpvar[0] */
+		/* ebp-8: rt */
+		/* ebp-12: exception_handler */
 
 		/* movl $src, %eax */		IB(0xb8); ID(src);
 		/* shll $3, %eax */		IB(0xc1); IB(0xe0); IB(0x03);
-		/* addl (%ebp), %eax */		IB(0x03); IB(0x45); IB(0x00);
-		/* movl 4(%eax), %eax */	IB(0x4c); IB(0x89); IB(0xf1);
+		/* addl -4(%ebp), %eax */	IB(0x03); IB(0x45); IB(0xfc);
+		/* movl 4(%eax), %eax */	IB(0x8b); IB(0x40); IB(0x04);
 
 		/* Compare: rt->frame->tmpvar[dst].val.i == 0 */
 		/* cmpl $0, %eax */		IB(0x83); IB(0xf8); IB(0x00);
@@ -1461,6 +1478,8 @@ jit_visit_bytecode(
 	/* Put a prologue. */
 	ASM {
 	/* prologue: */
+		/* mov 4(%esp), %eax; rt */		IB(0x8b); IB(0x44); IB(0x24); IB(0x04);
+
 		/* pushl %ebx */			IB(0x53);
 		/* pushl %ecx */			IB(0x51);
 		/* pushl %edx */			IB(0x52);
@@ -1468,30 +1487,29 @@ jit_visit_bytecode(
 		/* pushl %esi */			IB(0x56);
 		/* pushl %ebp */			IB(0x55);
 
-		/* mov (%esp), %eax; rt */		IB(0x8b); IB(0x04); IB(0x24);
-
 		/* movl %esp, %ebp */			IB(0x89); IB(0xe5);
-		/* subl $12, %esp */			IB(0x83); IB(0xec); IB(0x0c);
+		/* subl $16, %esp */			IB(0x83); IB(0xec); IB(0x0c);
 
-		/* ebp-4: rt */
+		/* (ebp-8): rt */
+		/* movl %eax, -8(%ebp) */		IB(0x89); IB(0x45); IB(0xf8);
+
+		/* (ebp-4): &rt->frame->tmpvar[0] */
+		/* movl (%eax), %eax */			IB(0x8b); IB(0x00);
+		/* movl (%eax), %eax */			IB(0x8b); IB(0x00);
 		/* movl %eax, -4(%ebp) */		IB(0x89); IB(0x45); IB(0xfc);
 
-		/* ebp: &rt->frame->tmpvar[0] */
-		/* movl (%eax), %eax */			IB(0x8b); IB(0x00);
-		/* movl (%eax), %eax */			IB(0x8b); IB(0x00);
-		/* movl %eax, (%ebp) */			IB(0x89); IB(0x45); IB(0x00);
-
-		/* ebp-8: exception_handler */
-		/* movl $(ctx->code + 10), -8(%ebp) */	IB(0xc7); IB(0x45); IB(0xf8); ID((uint32_t)(ctx->code + 10));
+		/* (ebp-12): exception_handler */
+		/* movl $(ctx->code + 10), -12(%ebp) */	IB(0xc7); IB(0x45); IB(0xf4); ID((uint32_t)(ctx->code + 10));
 
 		/* Skip an exception handler. */
-		/* jmp exception_handler_end */		IB(0xeb); IB(9);
+		/* jmp exception_handler_end */		IB(0xeb); IB(0x0f);
 	}
 
 	/* Put an exception handler. */
 	ctx->exception_code = ctx->code;
 	ASM {
 	/* exception_handler: */
+		/* addl $16, %esp */	IB(0x83); IB(0xc4); IB(0x0c);
 		/* popl %ebp */ 	IB(0x5d);
 		/* popl %esi */ 	IB(0x5e);
 		/* popl %edi */ 	IB(0x5f);
@@ -1682,6 +1700,7 @@ jit_visit_bytecode(
 	/* Put an epilogue. */
 	ASM {
 	/* epilogue: */
+		/* addl $16, %esp */	IB(0x83); IB(0xc4); IB(0x0c);
 		/* popl %ebp */ 	IB(0x5d);
 		/* popl %esi */ 	IB(0x5e);
 		/* popl %edi */ 	IB(0x5f);

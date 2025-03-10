@@ -5,7 +5,7 @@ YACC=bison
 LEX=flex
 
 CPPFLAGS=-I../../src -DUSE_JIT
-CFLAGS=-O0 -g3
+CFLAGS=-O0 -g3 -m32
 LDFLAGS=-lm
 
 OBJS=\
@@ -16,7 +16,8 @@ OBJS=\
 	lir.o \
 	runtime.o \
 	jit-arm64.o \
-	jit-x86_64.o
+	jit-x86_64.o \
+	jit-x86.o
 
 all: linguine
 
@@ -57,6 +58,9 @@ jit-arm64.o: ../../src/jit-arm64.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
 jit-x86_64.o: ../../src/jit-x86_64.c
+	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
+jit-x86.o: ../../src/jit-x86.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
 clean:

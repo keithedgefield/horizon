@@ -163,9 +163,8 @@ struct rt_frame {
 struct rt_value {
 	/* Offset 0: */
 	int type;
-	int padd_;
 
-	/* Offset 8: */
+	/* Offset 4 or 8: */
 	union {
 		int i;
 		float f;

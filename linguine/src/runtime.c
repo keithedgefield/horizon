@@ -483,8 +483,11 @@ rt_call(
 
 		if (func->jit_code != NULL) {
 			/* Call a JIT-generated code. */
-			if (!func->jit_code(rt))
+			if (!func->jit_code(rt)) {
+printf("Returned from JIT code (false).\n");
 				return false;
+			}
+printf("Returned from JIT code (true).\n");
 		} else {
 			/* Call the bytecode interpreter. */
 			if (!rt_visit_bytecode(rt, func))
