@@ -9,7 +9,7 @@ and devices - including Linux, Windows, macOS, iOS, Android, and Web
 browsers. Our goal is to create a lightweight yet powerful framework
 that both beginners and experienced developers can easily use.
 
-## Linguine: A Lightweight Scripting Language
+## Linguine: A Fast, Compact Scripting Language
 
 `Linguine` is our purpose-built scripting language designed
 specifically for the Horizon framework environment. Linguine strikes

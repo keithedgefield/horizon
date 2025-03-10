@@ -164,6 +164,10 @@ struct rt_value {
 	/* Offset 0: */
 	int type;
 
+#if defined(ARCH_ARM64) || defined(ARCH_X86_64)
+	int padding;
+#endif
+
 	/* Offset 4 or 8: */
 	union {
 		int i;

@@ -525,6 +525,17 @@ jit_put_cmp_imm(
 	return true;
 }
 
+/* cmp w3, w4 */
+#define CMP_W3_W4()		if (!jit_put_cmp_w3_w4(ctx)) return false
+static bool
+jit_put_cmp_w3_w4(
+	struct jit_context *ctx)
+{
+	if (!jit_put_word(ctx, 0x6b04007f))
+		return false;
+	return true;
+}
+
 /* BAL */
 #define BAL(rel)		if (!jit_put_bal(ctx, rel)) return false
 static INLINE bool
@@ -843,7 +854,7 @@ jit_visit_iconst_op(
 		ADD	(REG_X2, REG_X2, REG_X1);
 
 		/* rt->frame->tmpvar[dst].type = RT_VALUE_INT */
-		MOVZ	(REG_X3, IMM16(RT_VALUE_INT), LSL_0);
+		MOVZ	(REG_X3, IMM16(0), LSL_0);
 		STR	(REG_X3, REG_X2);
 
 		/* rt->frame->tmpvar[dst].val.i = val */
@@ -1330,26 +1341,22 @@ jit_visit_eqi_op(
 	CONSUME_TMPVAR(src1);
 	CONSUME_TMPVAR(src2);
 
-	/*
-	 * rt->frame->tmpvar[dst].type = RT_VALULE_INT;
-	 * rt->frame->tmpvar[dst].val.i = rt->frame->tmpvar[src1].val.i -
-	 *                                rt->frame->tmpvar[src2].val.i;
-	 */
+	/* src1 == src2 */
 	ASM {
 		/* x3 = &rt->frame->tmpvar[src1].val.i */
-		MOVZ	(REG_X3, IMM16(src1), LSL_0);	/* src1 */
-		LSL_4	(REG_X3, REG_X3);		/* src1 * sizeof(struct rt_value) */
-		ADD	(REG_X3, REG_X3, REG_X1);
-		LDR_IMM	(REG_X3, REG_X3, 8);
+		MOVZ		(REG_X3, IMM16(src1), LSL_0);	/* src1 */
+		LSL_4		(REG_X3, REG_X3);		/* src1 * sizeof(struct rt_value) */
+		ADD		(REG_X3, REG_X3, REG_X1);
+		LDR_IMM		(REG_X3, REG_X3, 8);
 
-		/* x4 = &rt->frame->tmpvar[src2] */
-		MOVZ	(REG_X4, IMM16(src2), LSL_0);	/* src1 */
-		LSL_4	(REG_X4, REG_X4);		/* src1 * sizeof(struct rt_value) */
-		ADD	(REG_X4, REG_X4, REG_X1);
-		LDR_IMM	(REG_X4, REG_X4, 8);
+		/* x4 = &rt->frame->tmpvar[src2].val.i */
+		MOVZ		(REG_X4, IMM16(src2), LSL_0);	/* src2 */
+		LSL_4		(REG_X4, REG_X4);		/* src2 * sizeof(struct rt_value) */
+		ADD		(REG_X4, REG_X4, REG_X1);
+		LDR_IMM		(REG_X4, REG_X4, 8);
 
-		/* dst = src1 - src2 */
-		CMP_REG	(REG_X3, REG_X4);
+		/* src1 == src2 */
+		CMP_W3_W4	();
 	}
 
 	return true;
@@ -1991,8 +1998,6 @@ jit_visit_bytecode(
 		ctx->pc_entry[ctx->pc_entry_count].lpc = ctx->lpc;
 		ctx->pc_entry[ctx->pc_entry_count].code = ctx->code;
 		ctx->pc_entry_count++;
-
-		printf("[JIT] PC=%d\n", ctx->lpc);
 
 		/* Dispatch by opcode. */
 		CONSUME_OPCODE(opcode);

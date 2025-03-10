@@ -5,7 +5,7 @@ YACC=bison
 LEX=flex
 
 CPPFLAGS=-I../../src -DUSE_JIT
-CFLAGS=-O0 -g3 -m32
+CFLAGS=-O0 -g3
 LDFLAGS=-lm
 
 OBJS=\
