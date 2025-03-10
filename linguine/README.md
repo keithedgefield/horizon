@@ -1,23 +1,17 @@
 Linguine
 ========
 
-Linguine is a fast, portable scripting language designed for seamless
-integration into other applications. It features a clean, C-like
-syntax and modern programming capabilities including iterators and
-dictionaries. Linguine strikes a balance between being easy to learn
-for beginners while providing powerful features for experienced
-programmers.
-
-Linguine features a built-in Just-in-Time compiler that boosts
-performance by generating native code during runtime. The JIT compiler
-works with 32-bit Intel, 64-bit AMD/Intel, and 64-bit Arm
-architectures, delivering fast and reliable execution. On other
-platforms, Linguine falls back to a classic interpreter.
+Linguine is a fast, modern, compact scripting language for application
+integration. With its C-like syntax, it includes modern features like
+iterators and dictionaries, making it both beginner-friendly and
+powerful. The language includes a Just-in-Time compiler that generates
+native code for Intel, AMD, and Arm architectures, with interpreter
+fallback for other platforms.
 
 ## Build and Run
 
 ```
-cd linguine/linux
+cd build/linguine/linux
 make
 ./linguine ../../hello.ls
 ```

@@ -9,35 +9,42 @@ and devices - including Linux, Windows, macOS, iOS, Android, and Web
 browsers. Our goal is to create a lightweight yet powerful framework
 that both beginners and experienced developers can easily use.
 
-## Linguine: A Fast, Compact Scripting Language
+## Linguine: A Fast, Modern, Compact Scripting Language
 
-`Linguine` is our purpose-built scripting language designed
-specifically for the Horizon framework environment. Linguine strikes
-an ideal balance between simplicity and power - it's accessible for
-beginners with an intuitive syntax and straightforward learning curve,
-yet provides powerful capabilities and advanced features for
-experienced developers who need more complex functionality.
+Linguine is a fast, portable scripting language for application
+integration. With its C-like syntax, it includes modern features like
+iterators and dictionaries, making it both beginner-friendly and
+powerful. The language includes a Just-in-Time compiler that generates
+native code for Intel, AMD, and Arm architectures, with interpreter
+fallback for other platforms.
+
+```
+cd linguine
+cd build
+cd linux
+make
+./linguine ../../hello.ls     # JIT, a faster method
+./linguine -i ../../hello.ls  # Interpreter, a safe mode method
+```
 
 ## Momo: A Modern, Ultra-Portable Gaming API
 
 `Momo` is the foundation framework of Horizon Project, provides a
-modern, efficient API that abstracts away platform-specific details
+modern, efficient C API that abstracts away platform-specific details
 while maintaining excellent performance. The architecture follows a
 component-based design, enabling modularity and portability.
 
 ## SpriteKit: A 3D Game Library
 
-Horizon provides `SpriteKit` - a comprehensive toolkit designed
-specifically for 2D game development. This versatile component offers
-a rich set of features and optimized rendering capabilities that
-streamline the game creation process.
+Horizon provides `SpriteKit` - a comprehensive C++ and Linguine
+toolkit designed specifically for 2D game development. This versatile
+component offers a rich set of features and optimized rendering
+capabilities that streamline the game creation process.
 
 ## WorldKit: A Scene-Based 3D Framework
 
-WorldKit is an experimental attempt to make a scene-based 3D framework
-on Momo.
+A scene-based 3D framework built on Momo, written for C++ and Linguine.
 
 ## NovelKit: A Visual Novel Framework
 
-NovelKit is an experimental attempt to make a visual novel engine on
-SpriteKit and WorldKit.
+A visual novel engine on SpriteKit and WorldKit, written for Linguine.
