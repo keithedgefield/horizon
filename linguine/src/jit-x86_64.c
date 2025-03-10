@@ -418,8 +418,8 @@ jit_visit_assign_op(
 
 		/* movq dst, %rax */		IB(0x48); IB(0xc7); IB(0xc0); ID(dst);
 		/* movq src, %rbx */		IB(0x48); IB(0xc7); IB(0xc3); ID(src);
-		/* shll $4, %eax */		IB(0xc1); IB(0xe0); IB(0x04);
-		/* shll $4, %ebx */		IB(0xc1); IB(0xe3); IB(0x04);
+		/* shlq $4, %rax */		IB(0xc1); IB(0xe0); IB(0x04);
+		/* shlq $4, %rbx */		IB(0xc1); IB(0xe3); IB(0x04);
 		/* addq %r15, %rax */		IB(0x4c); IB(0x01); IB(0xf8);
 		/* addq %r15, %rbx */		IB(0x4c); IB(0x01); IB(0xfb);
 		/* movq (%rbx), %rcx */		IB(0x48); IB(0x8b); IB(0x0b);
@@ -588,7 +588,7 @@ jit_visit_inc_op(
 		/* movq dst, %rax */			IB(0x48); IB(0xc7); IB(0xc0); ID(dst);
 		/* shlq $4, %rax */			IB(0x48); IB(0xc1); IB(0xe0); IB(0x04);
 		/* addq %r15, %rax */			IB(0x4c); IB(0x01); IB(0xf8);
-		/* incq (%rax) */			IB(0x48); IB(0xff); IB(0x00);
+		/* incq 8(%rax) */			IB(0x48); IB(0xff); IB(0x40); IB(0x08);
 	}
 
 	return true;
@@ -871,17 +871,17 @@ jit_visit_eqi_op(
 	CONSUME_TMPVAR(src1);
 	CONSUME_TMPVAR(src2);
 
-	/* if (!jit_gte_helper(rt, dst, src1, src2)) return false; */
+	/* src1 - src2 */
 	ASM {
 		/* movq dst, %rax */		IB(0x48); IB(0xc7); IB(0xc0); ID(dst);
 		/* shlq $4, %rax */		IB(0x48); IB(0xc1); IB(0xe0); IB(0x04);
 		/* addq %r15, %rax */		IB(0x4c); IB(0x01); IB(0xf8);
 
-		/* movq src1, %rbx */		IB(0x48); IB(0xc7); IB(0xc3); ID(dst);
+		/* movq src1, %rbx */		IB(0x48); IB(0xc7); IB(0xc3); ID(src1);
 		/* shlq $4, %rbx */		IB(0x48); IB(0xc1); IB(0xe3); IB(0x04);
 		/* addq %r15, %rbx */		IB(0x4c); IB(0x01); IB(0xfb);
 		
-		/* movq src2, %rcx */		IB(0x48); IB(0xc7); IB(0xc1); ID(dst);
+		/* movq src2, %rcx */		IB(0x48); IB(0xc7); IB(0xc1); ID(src2);
 		/* shlq $4, %rcx */		IB(0x48); IB(0xc1); IB(0xe1); IB(0x04);
 		/* addq %r15, %rcx */		IB(0x4c); IB(0x01); IB(0xf9);
 
@@ -1064,9 +1064,9 @@ jit_visit_storesymbol_op(
 		/* movabs rt_storesymbol_helper, %r8 */	IB(0x49); IB(0xb8); IQ((uint64_t)rt_storesymbol_helper);
 		/* call *%r8 */				IB(0x41); IB(0xff); IB(0xd0);
 
-		/* cmpl $0, %eax */				IB(0x83); IB(0xf8); IB(0x00);
-		/* jne 8 <next> */				IB(0x75); IB(0x03);
-		/* jmp *%r13 */					IB(0x41); IB(0xff); IB(0xe5);
+		/* cmpl $0, %eax */			IB(0x83); IB(0xf8); IB(0x00);
+		/* jne 8 <next> */			IB(0x75); IB(0x03);
+		/* jmp *%r13 */				IB(0x41); IB(0xff); IB(0xe5);
 		/* next:*/
 	}
 
@@ -1313,18 +1313,18 @@ jit_visit_jmpiftrue_op(
 		/* movl 8(%rdx), %eax */		IB(0x8b); IB(0x42); IB(0x08);
 
 		/* Compare: rt->frame->tmpvar[dst].val.i == 1 */
-		/* cmpl $1, %eax */			IB(0x83); IB(0xf8); IB(0x01);
+		/* cmpl $0, %eax */			IB(0x83); IB(0xf8); IB(0x00);
 	}
 	
 	/* Patch later. */
 	ctx->branch_patch[ctx->branch_patch_count].code = ctx->code;
 	ctx->branch_patch[ctx->branch_patch_count].lpc = target_lpc;
-	ctx->branch_patch[ctx->branch_patch_count].type = PATCH_JE;
+	ctx->branch_patch[ctx->branch_patch_count].type = PATCH_JNE;
 	ctx->branch_patch_count++;
 
 	ASM {
 		/* Patched later. */
-		/* je 6 */				IB(0x0f); IB(0x84); ID(0);
+		/* jne 6 */				IB(0x0f); IB(0x84); ID(0);
 	}
 
 	return true;
@@ -1354,7 +1354,7 @@ jit_visit_jmpiffalse_op(
 		/* movl 8(%rdx), %eax */		IB(0x8b); IB(0x42); IB(0x08);
 
 		/* Compare: rt->frame->tmpvar[dst].val.i == 1 */
-		/* cmpl $1, %eax */			IB(0x83); IB(0xf8); IB(0x00);
+		/* cmpl $0, %eax */			IB(0x83); IB(0xf8); IB(0x00);
 	}
 	
 	/* Patch later. */
@@ -1365,13 +1365,13 @@ jit_visit_jmpiffalse_op(
 
 	ASM {
 		/* Patched later. */
-		/* jne 6 */				IB(0x0f); IB(0x85); ID(0);
+		/* je 6 */				IB(0x0f); IB(0x85); ID(0);
 	}
 
 	return true;
 }
 
-/* Visit a ROP_JMPIFTRUE instruction. */
+/* Visit a ROP_JMPIFEQ instruction. */
 static inline bool
 jit_visit_jmpifeq_op(
 	struct jit_context *ctx)
@@ -1559,7 +1559,7 @@ jit_visit_bytecode(
 				return false;
 			break;
 		case ROP_EQI:
-			if (!jit_visit_eqi_op(ctx))
+			if (!jit_visit_eq_op(ctx))
 				return false;
 			break;
 		case ROP_LOADARRAY:
@@ -1619,7 +1619,7 @@ jit_visit_bytecode(
 				return false;
 			break;
 		case ROP_JMPIFEQ:
-			if (!jit_visit_jmpifeq_op(ctx))
+			if (!jit_visit_jmpiftrue_op(ctx))
 				return false;
 			break;
 		default:
@@ -1671,31 +1671,34 @@ jit_patch_branch(
 	}
 
 	/* Calc a branch offset. */
-	offset = (intptr_t)target_code - (intptr_t)ctx->pc_entry[i].code;
+	offset = (intptr_t)target_code - (intptr_t)ctx->branch_patch[patch_index].code;
 
 	/* Set the assembler cursor. */
 	ctx->code = ctx->branch_patch[patch_index].code;
 
 	/* Assemble. */
 	if (ctx->branch_patch[patch_index].type == PATCH_JMP) {
+		offset -= 5;
 		ASM {
 			/* jmp offset */
 			IB(0xe9);
-			ID(((intptr_t)target_code - (intptr_t)ctx->code));
+			ID(offset);
 		}
 	} else if (ctx->branch_patch[patch_index].type == PATCH_JE) {
+		offset -= 6;
 		ASM {
 			/* je offset */
 			IB(0x0f);
 			IB(0x84);
-			ID(((intptr_t)target_code - (intptr_t)ctx->code));
+			ID(offset);
 		}
 	} else if (ctx->branch_patch[patch_index].type == PATCH_JNE) {
+		offset -= 6;
 		ASM {
 			/* jne offset */
 			IB(0x0f);
 			IB(0x85);
-			ID(((intptr_t)target_code - (intptr_t)ctx->code));
+			ID(offset);
 		}
 	}
 

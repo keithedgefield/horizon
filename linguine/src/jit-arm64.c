@@ -1336,11 +1336,6 @@ jit_visit_eqi_op(
 	 *                                rt->frame->tmpvar[src2].val.i;
 	 */
 	ASM {
-		/* x2 = &rt->frame->tmpvar[dst] */
-		MOVZ	(REG_X2, IMM16(dst), LSL_0);	/* dst */
-		LSL_4	(REG_X2, REG_X2);		/* dst * sizeof(struct rt_value) */
-		ADD	(REG_X2, REG_X2, REG_X1);
-
 		/* x3 = &rt->frame->tmpvar[src1].val.i */
 		MOVZ	(REG_X3, IMM16(src1), LSL_0);	/* src1 */
 		LSL_4	(REG_X3, REG_X3);		/* src1 * sizeof(struct rt_value) */
