@@ -8,14 +8,6 @@ CPPFLAGS=-I../../src -DUSE_JIT
 CFLAGS=-O0 -g3
 LDFLAGS=-lm
 
-OBJS=\
-	parser.tab.o \
-	lexer.yy.o \
-	ast.o \
-	hir.o \
-	lir.o \
-	runtime.o
-
 all: linguine
 
 #
@@ -23,14 +15,14 @@ all: linguine
 #
 
 linguine: command.o liblinguine.a
-	$(CC) -o linguine $(CFLAGS) $^
+	$(CC) -o linguine -arch arm64 -arch x86_64 $(CFLAGS) $^
 
 command.o: ../../src/command.c
 	$(CC) -c -arch arm64 -arch x86_64 -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
 #
-# Archiving Universal Binary objects by the ar command is not supported.
-# Let's make a Universal Binary archive by fusing two architecture-specific archives.
+# The `ar` command doesn't support archiving `Universal Binary` object files.
+# We fuse two architecture-specific archives into a single archive by using `lipo` command.
 #
 liblinguine.a: liblinguine-arm64.a liblinguine-x86_64.a
 	lipo -create liblinguine-arm64.a liblinguine-x86_64.a -output liblinguine.a

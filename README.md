@@ -9,13 +9,6 @@ and devices - including Linux, Windows, macOS, iOS, Android, and Web
 browsers. Our goal is to create a lightweight yet powerful framework
 that both beginners and experienced developers can easily use.
 
-## Momo: A Modern, Ultra-Portable Gaming API
-
-`Momo` is the foundation framework of Horizon Project, provides a
-modern, efficient API that abstracts away platform-specific details
-while maintaining excellent performance. The architecture follows a
-component-based design, enabling modularity and portability.
-
 ## Linguine: A Lightweight Scripting Language
 
 `Linguine` is our purpose-built scripting language designed
@@ -24,6 +17,13 @@ an ideal balance between simplicity and power - it's accessible for
 beginners with an intuitive syntax and straightforward learning curve,
 yet provides powerful capabilities and advanced features for
 experienced developers who need more complex functionality.
+
+## Momo: A Modern, Ultra-Portable Gaming API
+
+`Momo` is the foundation framework of Horizon Project, provides a
+modern, efficient API that abstracts away platform-specific details
+while maintaining excellent performance. The architecture follows a
+component-based design, enabling modularity and portability.
 
 ## SpriteKit: A 3D Game Library
 
