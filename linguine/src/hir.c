@@ -23,7 +23,7 @@
 #define UNIMPLEMENTED		(0)
 
 /* Debug dump */
-#define DEBUG_DUMP
+#undef DEBUG_DUMP
 
 /* List-add function. */
 #define HIR_ADD_TO_LAST(type, list, p)			\

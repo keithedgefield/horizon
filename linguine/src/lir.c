@@ -23,8 +23,8 @@
 #define INVALID_OPCODE		0
 
 /* Debug print */
-#define DEBUG_BLOCK_ORDER
-#define DEBUG_DUMP_LIR
+#undef DEBUG_BLOCK_ORDER
+#undef DEBUG_DUMP_LIR
 
 /*
  * Target LIR.
