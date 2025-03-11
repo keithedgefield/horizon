@@ -1,7 +1,7 @@
 /* -*- coding: utf-8; tab-width: 8; indent-tabs-mode: t; -*- */
 
 /*
- * Horizon
+ * GameKit
  * Copyright (c) 2025, The Horizon Authors. All rights reserved.
  */
 
@@ -23,8 +23,8 @@
  * u8 file_body[file_count][file_length]; // Obfuscated
  */
 
-#include "hal/hal.h"
-#include "hal/stdfile.h"
+#include "gamekit.h"
+#include "stdfile.h"
 
 /* Win32 */
 #ifdef TARGET_WIN32

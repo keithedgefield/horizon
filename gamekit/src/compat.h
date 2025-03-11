@@ -2,15 +2,15 @@
 
 /*
  * Horizon
- * Copyright (c) 2024, 2025, The Horizon Authors. All rights reserved.
+ * Copyright (c) 2025, The Horizon Authors. All rights reserved.
  */
 
 /*
  * A header to mitigate compiler differences.
  */
 
-#ifndef HORIZON_CONFIG_H
-#define HORIZON_CONFIG_H
+#ifndef HORIZON_COMPAT_H
+#define HORIZON_COMPAT_H
 
 /*
  * Here we define a macro that indicates a target platform.

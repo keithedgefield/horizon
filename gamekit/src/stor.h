@@ -1,18 +1,18 @@
 /* -*- coding: utf-8; tab-width: 8; indent-tabs-mode: t; -*- */
 
 /*
- * Horizon
+ * GameKit
  * Copyright (c) 2025, The Horizon Authors. All rights reserved.
  */
 
-#ifndef HORIZON_HAL_STOR_H
-#define HORIZON_HAL_STOR_H
+/*
+ * stor.h: "stor" component interface.
+ */
+
+#ifndef GAMEKIT_STOR_H
+#define GAMEKIT_STOR_H
 
 #include "config.h"
-
-/*
- * stor.h: The module for save data access.
- */
 
 struct stor;
 

@@ -1,70 +1,91 @@
-/* -*- coding: utf-8; indent-tabs-mode: t; tab-width: 8; c-basic-offset: 8; -*- */
+/* -*- coding: utf-8; tab-width: 8; indent-tabs-mode: t; -*- */
 
 /*
- * Horizon
- * Copyright (c) 2025, The Horizon Authors. All rights reserved.
+ * GameKit
+ * Copyright (c) 2024, 2025, The Horizon Authors. All rights reserved.
  */
 
 /*
- * This header absorbs some differences in the OpenGL implementations
- * between the platforms we support. This header is included from the
- * glrender.c file only.
- *
- * GLFW and GLEW work the same way, but we don't use them to reduce
- * our dependencies.
+ * glrender.h: The OpenGL implementation for "render_" component.
  */
 
-#ifndef GLHELPER_H
-#define GLHELPER_H
+#ifndef GAMEKIT_GLRENDER_H
+#define GAMEKIT_GLRENDER_H
 
-#if defined(_MSC_VER)
-#include <BaseTsd.h>
-typedef SSIZE_T ssize_t;
-#endif
+#include "compat.h"
+
+/* Initialize the glrender module. */
+bool glrender_init(int x, int y, int w, int h);
+
+/* Cleanup the glrender module. */
+void glrender_cleanup(void);
+
+/* Reisze the viewport. */
+void glrender_resize(int x, int y, int w, int h);
 
 /*
- * For Windows.
+ * Appendix
  */
-#define WGL_CONTEXT_MAJOR_VERSION_ARB		0x2091
-#define WGL_CONTEXT_MINOR_VERSION_ARB		0x2092
-#define WGL_CONTEXT_FLAGS_ARB			0x2094
-#define WGL_CONTEXT_PROFILE_MASK_ARB		0x9126
-#define WGL_CONTEXT_CORE_PROFILE_BIT_ARB	0x00000001
+
+#include <GL/gl.h>
 
 /*
- * Define the missing macros for OpenGL 2+ and OpenGL ES 2+.
+ * Define some macros for OpenGL 2+ and OpenGL ES 2+ if missing.
  */
+
 #ifndef GL_CLAMP_TO_EDGE
-#define GL_CLAMP_TO_EDGE			0x812F
-#define GL_TEXTURE0				0x84C0
-#define GL_TEXTURE1				0x84C1
-#define GL_ARRAY_BUFFER				0x8892
-#define GL_ELEMENT_ARRAY_BUFFER			0x8893
-#define GL_STATIC_DRAW				0x88E4
-#define GL_FRAGMENT_SHADER			0x8B30
-#define GL_LINK_STATUS				0x8B82
-#define GL_VERTEX_SHADER			0x8B31
-#define GL_COMPILE_STATUS			0x8B81
+#define GL_CLAMP_TO_EDGE	0x812F
+#endif
+
+#ifndef GL_TEXTURE0
+#define GL_TEXTURE0		0x84C0
+#endif
+
+#ifndef GL_TEXTURE1
+#define GL_TEXTURE1		0x84C1
+#endif
+
+#ifndef GL_ARRAY_BUFFER
+#define GL_ARRAY_BUFFER		0x8892
+#endif
+
+#ifndef GL_ELEMENT_ARRAY_BUFFER
+#define GL_ELEMENT_ARRAY_BUFFER		0x8893
+#endif
+
+#ifndef GL_STATIC_DRAW
+#define GL_STATIC_DRAW		0x88E4
+#endif
+
+#ifndef GL_FRAGMENT_SHADER
+#define GL_FRAGMENT_SHADER	0x8B30
+#endif
+
+#ifndef GL_LINK_STATUS
+#define GL_LINK_STATUS		0x8B82
+#endif
+
+#ifndef GL_VERTEX_SHADER
+#define GL_VERTEX_SHADER	0x8B31
+#endif
+
+#ifndef GL_COMPILE_STATUS
+#define GL_COMPILE_STATUS	0x8B81
 #endif
 
 /*
- * Define the missing typedefs if glext.h is not included.
+ * Define missing typedefs if glext.h is not included.
  */
+
 #ifndef __gl_glext_h_
 typedef char GLchar;
 typedef ssize_t GLsizeiptr;
 #endif
 
 /*
- * Declare the OpenGL 2+ API functions as pointer-to-function because:
- *  - Linux: libOpenGL.so provides pure stubs and thus we override them in linuxmain.c
- *  - Windows: opengl32.dll doesn't export OpenGL 2+ symbols and thus we define them in winmain.c
- *
- * We have to get real API pointers by the extension mechanism:
- *  - Linux: glXGetProcAddress()
- *  - Windows: wglGetProcAddress()
+ * OpenGL 2+ API symbols.
  */
-#if defined(TARGET_LINUX) || defined(TARGET_WIN32)
+#if defined(TARGET_LINUX)
 extern GLuint (APIENTRY *glCreateShader)(GLenum type);
 extern void (APIENTRY *glShaderSource)(GLuint shader, GLsizei count, const GLchar *const *string, const GLint *length);
 extern void (APIENTRY *glCompileShader)(GLuint shader);
@@ -90,10 +111,6 @@ extern void (APIENTRY *glDeleteShader)(GLuint shader);
 extern void (APIENTRY *glDeleteProgram)(GLuint program);
 extern void (APIENTRY *glDeleteVertexArrays)(GLsizei n, const GLuint *arrays);
 extern void (APIENTRY *glDeleteBuffers)(GLsizei n, const GLuint *buffers);
-#ifdef TARGET_WIN32
-/* Note: only Windows lacks glActiveTexture(), libOpenGL.so exports one that actually works. */
-extern void (APIENTRY *glActiveTexture)(GLenum texture);
 #endif
-#endif /* if defined(LINUX) || defined(TARGET_WIN32) */
 
-#endif	/* GLHELPER_H */
+#endif

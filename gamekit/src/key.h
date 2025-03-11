@@ -1,7 +1,7 @@
 /* -*- coding: utf-8; tab-width: 8; indent-tabs-mode: t; -*- */
 
 /*
- * Horizon
+ * GameKit
  * Copyright (c) 2025, The Horizon Authors. All rights reserved.
  */
 

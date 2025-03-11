@@ -1,15 +1,15 @@
 /* -*- coding: utf-8; tab-width: 8; indent-tabs-mode: t; -*- */
 
 /*
- * OpenNovel
- * Copyright (c) 2001-2024, OpenNovel.org. All rights reserved.
+ * GameKit
+ * Copyright (c) 2025, The Horizon Authors. All rights reserved.
  */
 
 /*
  * stdimage.c: The standard implementation of the image_ interface.
  */
 
-#include "hal/hal.h"
+#include "gamekit.h"
 
 #if defined(TARGET_WIN32)
 #include <malloc.h>	/* _aligned_malloc() */

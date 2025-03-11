@@ -1,19 +1,19 @@
 /* -*- coding: utf-8; tab-width: 8; indent-tabs-mode: t; -*- */
 
 /*
- * Horizon
- * Copyright (c) 2024, 2025, The Horizon Authors. All rights reserved.
+ * GameKit
+ * Copyright (c) 2025, The Horizon Authors. All rights reserved.
  */
 
 /*
- * "sys" module and main() implementation for Linux
+ * linuxmain.c: Linux main()
  */
 
-#include "hal/hal.h"
+#include "gamekit.h"
 
-#include "hal/stdfile.h"
-#include "hal/stdimage.h"
-#include "hal/glrender.h"
+#include "stdfile.h"
+#include "stdimage.h"
+#include "glrender.h"
 
 /* X11 */
 #include <X11/Xlib.h>
@@ -47,7 +47,7 @@ static struct timeval tv_start;
  */
 
 /* Window title */
-static const char *window_title;
+static char *window_title;
 
 /* Window size */
 static int window_width;
@@ -86,7 +86,12 @@ GLint (APIENTRY *glGetAttribLocation)(GLuint program, const GLchar *name);
 void (APIENTRY *glVertexAttribPointer)(GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void *pointer);
 void (APIENTRY *glEnableVertexAttribArray)(GLuint index);
 GLint (APIENTRY *glGetUniformLocation)(GLuint program, const GLchar *name);
-void (APIENTRY *glUniform1i)(GLint location, GLint v0);
+void (APIENTRY *glUniform1i)(GLint location, GLint v);
+void (APIENTRY *glUniform1f)(GLint location, GLfloat v);
+void (APIENTRY *glUniform2fv)(GLint location, GLfloat *v);
+void (APIENTRY *glUniform3fv)(GLint location, GLfloat *v);
+void (APIENTRY *glUniform4fv)(GLint location, GLfloat *v);
+void (APIENTRY *glUniformMatrix4fv)(GLint location, GLfloat *v);
 void (APIENTRY *glBufferData)(GLenum target, GLsizeiptr size, const void *data, GLenum usage);
 void (APIENTRY *glDeleteShader)(GLuint shader);
 void (APIENTRY *glDeleteProgram)(GLuint program);
@@ -119,6 +124,11 @@ static struct API api[] = {
 	{(void **)&glEnableVertexAttribArray, "glEnableVertexAttribArray"},
 	{(void **)&glGetUniformLocation, "glGetUniformLocation"},
 	{(void **)&glUniform1i, "glUniform1i"},
+	{(void **)&glUniform1f, "glUniform1f"},
+	{(void **)&glUniform2fv, "glUniform2fv"},
+	{(void **)&glUniform3fv, "glUniform3fv"},
+	{(void **)&glUniform4fv, "glUniform4fv"},
+	{(void **)&glUniformMatrix4fv, "glUniformMatrix4fv"},
 	{(void **)&glBufferData, "glBufferData"},
 	{(void **)&glDeleteShader, "glDeleteShader"},
 	{(void **)&glDeleteProgram, "glDeleteProgram"},

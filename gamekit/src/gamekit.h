@@ -1,18 +1,18 @@
 /* -*- coding: utf-8; tab-width: 8; indent-tabs-mode: t; -*- */
 
 /*
- * Horizon
+ * GameKit
  * Copyright (c) 2025, The Horizon Authors. All rights reserved.
  */
 
 /*
- * hal.h: The main header of HAL.
+ * hal.h: The main header of GameKit.
  */
 
-#ifndef HORIZON_HAL_HAL_H
-#define HORIZON_HAL_HAL_H
+#ifndef GAMEKIT_GAMEKIT_H
+#define GAMEKIT_GAMEKIT_H
 
-#include "config.h"
+#include "compat.h"
 
 /* Modules */
 #include "sys.h"
@@ -33,7 +33,7 @@
  */
 
 /* Called after the "file" initializain and before the "render" initialization. */
-bool on_hal_init_render(const char **title, int *width, int *height);
+bool on_hal_init_render(char **title, int *width, int *height);
 
 /* Called after the whole HAL initialization and before the game loop. */
 bool on_hal_ready(void);

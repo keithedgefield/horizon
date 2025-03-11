@@ -1,18 +1,18 @@
 /* -*- coding: utf-8; tab-width: 8; indent-tabs-mode: t; -*- */
 
 /*
- * Horizon
+ * GameKit
  * Copyright (c) 2025, The Horizon Authors. All rights reserved.
  */
 
 /*
- * file.h: The interface for asset file access.
+ * file.h: "file_" component interface.
  */
 
-#ifndef HORIZON_HAL_FILE_H
-#define HORIZON_HAL_FILE_H
+#ifndef GAMEKIT_FILE_H
+#define GAMEKIT_FILE_H
 
-#include "config.h"
+#include "compat.h"
 
 /* File read stream. */
 struct file;

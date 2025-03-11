@@ -1,18 +1,18 @@
 /* -*- coding: utf-8; tab-width: 8; indent-tabs-mode: t; -*- */
 
 /*
- * Horizon
+ * GameKit
  * Copyright (c) 2025, The Horizon Authors. All rights reserved.
  */
 
 /*
- * render.h: The "render" module's interface.
+ * render.h: "render_" component interface.
  */
 
-#ifndef HORIZON_HAL_RENDER_H
-#define HORIZON_HAL_RENDER_H
+#ifndef GAMEKIT_RENDER_H
+#define GAMEKIT_RENDER_H
 
-#include "config.h"
+#include "compat.h"
 #include "image.h"
 
 struct render_pipeline;
@@ -153,7 +153,7 @@ void render_upload_index_buffer(struct render_index_buffer *buf, const short *sr
  */
 
 /* Update a pipeline constant. */
-bool render_update_constant(struct render_constant_buffer *buf, const char *name, void *src);
+bool render_update_constant(struct render_pipeline *pipeline, struct render_constant_buffer *buf, const char *name, void *src);
 
 /*
  * Rendering

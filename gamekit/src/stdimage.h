@@ -1,7 +1,7 @@
 /* -*- coding: utf-8; tab-width: 8; indent-tabs-mode: t; -*- */
 
 /*
- * Horizon
+ * GameKit
  * Copyright (c) 2025, The Horizon Authors. All rights reserved.
  */
 
@@ -9,10 +9,10 @@
  * stdimage.h: The standard implementation of the image_ interface.
  */
 
-#ifndef HORIZON_HAL_STDIMAGE_H
-#define HORIZON_HAL_STDIMAGE_H
+#ifndef GAMEKIT_STDIMAGE_H
+#define GAMEKIT_STDIMAGE_H
 
-#include "config.h"
+#include "compat.h"
 
 /* Initialize the stdimage module. */
 bool stdimage_init(void);

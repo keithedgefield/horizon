@@ -1,18 +1,18 @@
 /* -*- coding: utf-8; tab-width: 8; indent-tabs-mode: t; -*- */
 
 /*
- * Horizon
+ * GameKit
  * Copyright (c) 2025, The Horizon Authors. All rights reserved.
  */
 
 /*
- * image.h: The Interface for image manipulation.
+ * image.h: "image_" component interface.
  */
 
-#ifndef HORIZON_HAL_IMAGE_H
-#define HORIZON_HAL_IMAGE_H
+#ifndef GAMEKIT_IMAGE_H
+#define GAMEKIT_IMAGE_H
 
-#include "config.h"
+#include "compat.h"
 
 /*
  * image structure

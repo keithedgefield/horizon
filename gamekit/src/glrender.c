@@ -1,19 +1,20 @@
 /* -*- coding: utf-8; tab-width: 8; indent-tabs-mode: t; -*- */
 
 /*
- * Horizon
+ * GameKit
  * Copyright (c) 2025, The Horizon Authors. All rights reserved.
  */
 
 /*
- * glrender.c: The OpenGL implementation for the "render" module interface.
+ * glrender.c: The OpenGL implementation for "render_" component.
  */
 
-#include "hal/hal.h"
-#include "hal/glrender.h"
+#include "gamekit.h"
+#include "glrender.h"
 
 /* Linux (OpenGL 3.2) */
 #if defined(TARGET_LINUX)
+#include <GL/gl.h>
 #include <GL/gl.h>
 #include "glhelper.h"
 #endif
@@ -1122,7 +1123,7 @@ void render_destroy_index_buffer(struct render_index_buffer *buf)
 /*
  * Update a pipeline constant.
  */
-bool render_update_constant(struct render_pipeline *pipeline, const char *name, void *src)
+bool render_update_constant(struct render_pipeline *pipeline, struct render_constant_buffer *buf, const char *name, void *src)
 {
 	int i, index, location;
 
@@ -1142,7 +1143,7 @@ bool render_update_constant(struct render_pipeline *pipeline, const char *name, 
 	/* Update by the type. */
 	location = glGetUniformLocation(pipeline->program, pipeline->uniform[i].name);
 	if (strcmp(pipeline->uniform[index].type, "float") == 0)
-		glUniform1f(location, 1, GL_FALSE, (float *)src);
+		glUniform1f(location,  (float *)src);
 	else if (strcmp(pipeline->uniform[index].type, "vec2") == 0)
 		glUniform2fv(location, 1, GL_FALSE, (float *)src);
 	else if (strcmp(pipeline->uniform[index].type, "vec3") == 0)

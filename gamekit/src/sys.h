@@ -1,25 +1,18 @@
 /* -*- coding: utf-8; tab-width: 8; indent-tabs-mode: t; -*- */
 
-#ifndef HORIZON_HAL_SYS_H
-#define HORIZON_HAL_SYS_H
-
 /*
- * Horizon
+ * GameKit
  * Copyright (c) 2025, The Horizon Authors. All rights reserved.
  */
 
 /*
- * Interface of the "system" module.
- *  - Implementations are:
- *    - "linuxsystem.c" ... For Linux
- *    - "winsystem.c"   ... For Windows
- *    - "nssystem.c"    ... For macOS
- *    - "uisystem.c"    ... For iOS
- *    - "ndksystem.c"   ... For Android NDK
- *    - "emsystem.c"    ... For Emscripten
+ * sys.h: "sys_" component interface.
  */
 
-#include "config.h"
+#ifndef GAMEKIT_SYS_H
+#define GAMEKIT_SYS_H
+
+#include "compat.h"
 
 /* Print a log line. */
 void sys_log(const char *format, ...);
