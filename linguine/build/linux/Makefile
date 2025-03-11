@@ -4,7 +4,7 @@ AR=ar
 YACC=bison
 LEX=flex
 
-CPPFLAGS=-I../../src -DUSE_JIT
+CPPFLAGS=-I../../include -DUSE_JIT
 CFLAGS=-O0 -g3
 LDFLAGS=-lm
 

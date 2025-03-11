@@ -9,11 +9,11 @@
  * JIT (arm64): Just-In-Time native code generation
  */
 
-#include "compat.h"		/* ARCH_ARM64 */
+#include "linguine/compat.h"		/* ARCH_ARM64 */
 
 #if defined(ARCH_ARM64) && defined(USE_JIT)
 
-#include "runtime.h"
+#include "linguine/runtime.h"
 
 #include <stdio.h>
 #include <stdlib.h>

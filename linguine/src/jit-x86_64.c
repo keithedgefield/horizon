@@ -9,7 +9,7 @@
  * JIT (x86_64): Just-In-Time native code generation
  */
 
-#include "compat.h"		/* ARCH_X86_64 */
+#include "linguine/compat.h"		/* ARCH_X86_64 */
 
 #if defined(ARCH_X86_64) && defined(USE_JIT)
 

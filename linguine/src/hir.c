@@ -9,8 +9,8 @@
  * HIR: High-level Intermediate Representation
  */
 
-#include "hir.h"
-#include "ast.h"
+#include "linguine/hir.h"
+#include "linguine/ast.h"
 
 #include <stdio.h>
 #include <stdlib.h>

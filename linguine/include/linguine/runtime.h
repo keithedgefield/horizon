@@ -12,12 +12,34 @@
 #ifndef LINGUINE_RUNTIME_H
 #define LINGUINE_RUNTIME_H
 
-#include "compat.h"
+#include "linguine/compat.h"
+#include "linguine/linguine.h"
 
+/* Maximum arguments of a call. */
 #define RT_ARG_MAX	32
 
+/* Forward declaration */
 struct lir_func;
 struct rt_env;
+struct rt_env;
+struct rt_frame;
+struct rt_value;
+struct rt_func;
+struct rt_string;
+struct rt_array;
+struct rt_dict;
+struct rt_bindglobal;
+struct rt_bindlocal;
+
+/* Value type. */
+enum rt_value_type {
+	RT_VALUE_INT,
+	RT_VALUE_FLOAT,
+	RT_VALUE_STRING,
+	RT_VALUE_ARRAY,
+	RT_VALUE_DICT,
+	RT_VALUE_FUNC,
+};
 
 enum rt_bytecode {
 	ROP_NOP,		/* 0x00: nop */
@@ -61,25 +83,6 @@ enum rt_bytecode {
 	ROP_JMPIFEQ,		/* 0x25: PC = src1 if src2 indicates eq */
 	ROP_LINEINFO,		/* 0x26: setDebugLine(src) */
 };
-
-enum rt_value_type {
-	RT_VALUE_INT,
-	RT_VALUE_FLOAT,
-	RT_VALUE_STRING,
-	RT_VALUE_ARRAY,
-	RT_VALUE_DICT,
-	RT_VALUE_FUNC,
-};
-
-struct rt_env;
-struct rt_frame;
-struct rt_value;
-struct rt_func;
-struct rt_string;
-struct rt_array;
-struct rt_dict;
-struct rt_bindglobal;
-struct rt_bindlocal;
 
 /* Runtime environment. */
 struct rt_env {
@@ -264,10 +267,6 @@ struct rt_bindlocal {
 	struct rt_bindlocal *next;
 };
 
-/*
- * Runtime Environment
- */
-
 /* Create a runtime environment. */
 bool
 rt_create(
@@ -305,10 +304,6 @@ void
 rt_out_of_memory(
 	struct rt_env *rt);
 
-/*
- * Function Registration
- */
-
 /* Register functions from a souce text. */
 bool
 rt_register_source(
@@ -332,21 +327,6 @@ rt_register_cfunc(
 	const char *param_name[],
 	bool (*cfunc)(struct rt_env *env));
 
-/* Register a C function and set it to a dictionary. */
-bool
-rt_register_cfunc_under(
-	struct rt_env *rt,
-	const char *global_name,
-	struct rt_value *dict,
-	const char *key_name,
-	int param_count,
-	const char *param_name[],
-	bool (*cfunc)(struct rt_env *env));
-
-/*
- * Function Call
- */
-
 /* Call a function. */
 bool
 rt_call(
@@ -366,10 +346,6 @@ rt_call_with_name(
 	int arg_count,
 	struct rt_value *arg,
 	struct rt_value *ret);
-
-/*
- * Value Manipulation
- */
 
 /* Make an integer value. */
 void
@@ -514,10 +490,6 @@ rt_set_dict_elem(
 	const char *key,
 	struct rt_value *val);
 
-/*
- * Local Variable
- */
-
 /* Get a local variable value. (For C func implementation) */
 bool
 rt_get_local(
@@ -527,14 +499,10 @@ rt_get_local(
 
 /* Set a local variable value. (For C func implementation) */
 bool
-	rt_set_local(
+rt_set_local(
 	struct rt_env *rt,
 	const char *name,
 	struct rt_value *val);
-
-/*
- * Global Variable
- */
 
 /* Get a global variable. */
 bool
@@ -549,10 +517,6 @@ rt_set_global(
 	struct rt_env *rt,
 	const char *name,
 	struct rt_value *val);
-
-/*
- * GC
- */
 
 /* Do a shallow GC for nursery space. */
 bool
@@ -571,15 +535,17 @@ rt_get_heap_usage(
 	size_t *ret);
 
 /*
- * Helpers for JIT compiler
+ * JIT helpers
  */
 
+/* Do assign. */
 bool
 rt_assign_helper(
 	struct rt_env *rt,
 	int dst,
 	int src);
 
+/* Do add. */
 bool
 rt_add_helper(
 	struct rt_env *rt,
@@ -587,6 +553,7 @@ rt_add_helper(
 	int src1,
 	int src2);
 
+/* Do sub. */
 bool
 rt_sub_helper(
 	struct rt_env *rt,
@@ -760,10 +727,6 @@ rt_thiscall_helper(
 	const char *name,
 	int arg_count,
 	int *arg);
-
-/*
- * JIT
- */
 
 /* Generate a JIT-compiled code for a function. */
 bool

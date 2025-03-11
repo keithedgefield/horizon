@@ -9,7 +9,7 @@
  * stdimage.c: The standard implementation of the image_ interface.
  */
 
-#include "gamekit.h"
+#include "gamekit/gamekit.h"
 
 #if defined(TARGET_WIN32)
 #include <malloc.h>	/* _aligned_malloc() */

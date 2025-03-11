@@ -9,8 +9,8 @@
  * LIR: Low-level Intermediate Representation Generator
  */
 
-#include "lir.h"
-#include "hir.h"
+#include "linguine/lir.h"
+#include "linguine/hir.h"
 
 #include <stdio.h>
 #include <stdlib.h>

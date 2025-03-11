@@ -3,7 +3,7 @@
  * Linguine
  * Copyright (c) 2025, The Linguine Authors. All rights reserved.
  */
-#include "ast.h"
+#include "linguine/ast.h"
 
 #include <stdio.h>
 #include <string.h>

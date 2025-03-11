@@ -12,7 +12,7 @@
 #ifndef GAMEKIT_GLRENDER_H
 #define GAMEKIT_GLRENDER_H
 
-#include "compat.h"
+#include "gamekit/compat.h"
 
 /* Initialize the glrender module. */
 bool glrender_init(int x, int y, int w, int h);

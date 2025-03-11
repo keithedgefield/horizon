@@ -9,7 +9,7 @@
  * testmain.c: Test program.
  */
 
-#include "gamekit.h"
+#include "gamekit/gamekit.h"
 
 static struct render_pipeline *pipeline;
 static struct render_vertex_buffer *vertex_buffer;

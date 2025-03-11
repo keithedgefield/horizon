@@ -11,16 +11,16 @@
 
 /*
  * [configuration]
- *  - CONF_NO_COMPILATION ... No source compilation features.
- *  - CONF_DEBUGGER       ... gdb-like debugger feature.
+ *  - NO_COMPILATION ... No source compilation features.
+ *  - USE_DEBUGGER   ... gdb-like debugger feature.
  */
 
-#include "runtime.h"
+#include "linguine/runtime.h"
 
-#if !defined(CONF_NO_COMPILATION)
-#include "ast.h"
-#include "hir.h"
-#include "lir.h"
+#if !defined(NO_COMPILATION)
+#include "linguine/ast.h"
+#include "linguine/hir.h"
+#include "linguine/lir.h"
 #endif
 
 #include <stdio.h>
@@ -1752,7 +1752,7 @@ rt_get_heap_usage(
  * Debug stub
  */
 
-#if !defined(CONF_DEBUGGER)
+#if !defined(USE_DEBUGGER)
 static INLINE void dbg_pre_hook(struct rt_env *rt) { }
 static INLINE void dbg_post_hook(struct rt_env *rt) { }
 static INLINE bool dbg_error_hook(struct rt_env *rt) { return false; }

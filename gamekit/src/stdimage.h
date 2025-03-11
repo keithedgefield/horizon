@@ -12,7 +12,7 @@
 #ifndef GAMEKIT_STDIMAGE_H
 #define GAMEKIT_STDIMAGE_H
 
-#include "compat.h"
+#include "gamekit/compat.h"
 
 /* Initialize the stdimage module. */
 bool stdimage_init(void);

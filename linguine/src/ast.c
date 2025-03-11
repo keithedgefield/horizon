@@ -9,7 +9,7 @@
  * AST: Abstract Syntax Tree Generator
  */
 
-#include "ast.h"
+#include "linguine/ast.h"
 
 #include <stdio.h>
 #include <stdlib.h>

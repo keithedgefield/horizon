@@ -9,7 +9,7 @@
  * linuxmain.c: Linux main()
  */
 
-#include "gamekit.h"
+#include "gamekit/gamekit.h"
 
 #include "stdfile.h"
 #include "stdimage.h"

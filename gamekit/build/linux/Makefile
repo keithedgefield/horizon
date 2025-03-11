@@ -5,7 +5,7 @@ YACC=bison
 LEX=flex
 
 CPPFLAGS=\
-	-I../../src \
+	-I../../include \
 	-I./libroot/include
 
 CFLAGS=\

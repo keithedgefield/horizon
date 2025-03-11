@@ -9,7 +9,7 @@
  * glrender.c: The OpenGL implementation for "render_" component.
  */
 
-#include "gamekit.h"
+#include "gamekit/gamekit.h"
 #include "glrender.h"
 
 /* Linux (OpenGL 3.2) */

@@ -23,7 +23,7 @@
  * u8 file_body[file_count][file_length]; // Obfuscated
  */
 
-#include "gamekit.h"
+#include "gamekit/gamekit.h"
 #include "stdfile.h"
 
 /* Win32 */

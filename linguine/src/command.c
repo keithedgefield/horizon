@@ -9,7 +9,7 @@
  * The `linguine` Command
  */
 
-#include "runtime.h"
+#include "linguine/runtime.h"
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -17,7 +17,7 @@
 #ifndef GAMEKIT_GLHELPER_H
 #define GAMEKIT_GLHELPER_H
 
-#include "compat.h"
+#include "gamekit/compat.h"
 
 #if defined(_MSC_VER)
 #include <BaseTsd.h>
