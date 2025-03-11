@@ -21,7 +21,7 @@
 #include <assert.h>
 
 #if defined(TARGET_WINDOWS)
-#include <memoryapi.h>		/* VirtualAlloc(), VirtualProtect(), VirtualFree() */
+#include <Windows.h>		/* VirtualAlloc(), VirtualProtect(), VirtualFree() */
 #else
 #include <sys/mman.h>		/* mmap(), mprotect(), munmap() */
 #endif
@@ -148,7 +148,7 @@ jit_free(
 	 struct rt_func *func)
 {
 #if defined(TARGET_WINDOWS)
-	VirtualFree(func->jit_code, CODE_MAX);
+	VirtualFree(func->jit_code, CODE_MAX, MEM_DECOMMIT);
 #else
 	munmap(func->jit_code, CODE_MAX);
 #endif
