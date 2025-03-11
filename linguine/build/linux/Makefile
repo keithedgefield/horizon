@@ -1,6 +1,6 @@
-CC=arm-linux-gnueabihf-gcc
-LD=arm-linux-gnueabihf-ld
-AR=arm-linux-gnueabihf-ar
+CC=cc
+LD=ld
+AR=ar
 YACC=bison
 LEX=flex
 

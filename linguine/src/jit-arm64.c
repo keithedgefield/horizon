@@ -34,7 +34,7 @@
 #define BROKEN_BYTECODE		"Broken bytecode."
 
 /* Code size. */
-#define CODE_MAX		8192
+#define CODE_MAX		16 * 1024 * 1024
 
 /* PC entry size. */
 #define PC_ENTRY_MAX		2048
@@ -46,6 +46,11 @@
 #define PATCH_BAL		0
 #define PATCH_BEQ		1
 #define PATCH_BNE		2
+
+/* Generated code. */
+static uint32_t *jit_code_region;
+static uint32_t *jit_code_region_cur;
+static uint32_t *jit_code_region_tail;
 
 /* JIT codegen context */
 struct jit_context {
@@ -84,6 +89,9 @@ struct jit_context {
 };
 
 /* Forward declaration */
+static bool jit_map_memory_region(void);
+static void jit_map_writable(void);
+static void jit_map_executable(void);
 static bool jit_visit_bytecode(struct jit_context *ctx);
 static bool jit_patch_branch(struct jit_context *ctx, int patch_index);
 
@@ -96,29 +104,32 @@ jit_build(
 	  struct rt_func *func)
 {
 	struct jit_context ctx;
-	int pc;
 	int i;
 
+	/* If the first call, map a memory region for the generated code. */
+	if (jit_code_region == NULL) {
+		if (!jit_map_memory_region()) {
+			rt_error(rt, "Memory mapping failed.");
+			return false;
+		}
+	}
+
+	/* Make a context. */
 	memset(&ctx, 0, sizeof(struct jit_context));
+	ctx.code_top = jit_code_region_cur;
+	ctx.code_end = jit_code_region_tail;
+	ctx.code = ctx.code_top;
 	ctx.rt = rt;
 	ctx.func = func;
 
-	/* Map a new memory region for the generated code. */
-#if defined(TARGET_WINDOWS)
-	ctx.code_top = VirtualAlloc(NULL, CODE_MAX, MEM_COMMIT, PAGE_READWRITE);
-#else
-	ctx.code_top = mmap(NULL, CODE_MAX, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-#endif
-	if (ctx.code_top == NULL) {
-		rt_error(rt, "mmap() failed.");
-		return false;
-	}
-	ctx.code_end = ctx.code_top + CODE_MAX / 4;
-	ctx.code = ctx.code_top;
+	/* Make code writable and non-executable. */
+	jit_map_writable();
 
 	/* Visit over the bytecode. */
 	if (!jit_visit_bytecode(&ctx))
 		return false;
+
+	jit_code_region_cur = ctx.code;
 
 	/* Patch branches. */
 	for (i = 0; i < ctx.branch_patch_count; i++) {
@@ -127,16 +138,56 @@ jit_build(
 	}
 
 	/* Make code executable and non-writable. */
-#if defined(TARGET_WINDOWS)
-	DWORD dwOldProt;
-	VirtualProtect(ctx.code_top, CODE_MAX, PAGE_EXECUTE_READ, &dwOldProt);
-#else
-	mprotect(ctx.code_top, CODE_MAX, PROT_EXEC | PROT_READ);
-#endif
+	jit_map_executable();
 
 	func->jit_code = (bool (*)(struct rt_env *))ctx.code_top;
 
 	return true;
+}
+
+/* Map a memory region for the generated code. */
+static bool
+jit_map_memory_region(
+	void)
+{
+#if defined(TARGET_WINDOWS)
+	jit_code_region = VirtualAlloc(NULL, CODE_MAX, MEM_COMMIT, PAGE_READWRITE);
+#else
+	jit_code_region = mmap(NULL, CODE_MAX, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+#endif
+	if (jit_code_region == NULL)
+		return false;
+
+	jit_code_region_cur = jit_code_region;
+	jit_code_region_tail = jit_code_region + CODE_MAX / 4;
+
+	return true;
+}
+
+/* Make the region writable and non-executable. */
+static void
+jit_map_writable(
+	void)
+{
+#if defined(TARGET_WINDOWS)
+	DWORD dwOldProt;
+	VirtualProtect(jit_code_region, CODE_MAX, PAGE_READ_WRITE, &dwOldProt);
+#else
+	mprotect(jit_code_region, CODE_MAX, PROT_READ | PROT_WRITE);
+#endif
+}
+
+/* Make the region executable and non-writable. */
+static void
+jit_map_executable(
+	void)
+{
+#if defined(TARGET_WINDOWS)
+	DWORD dwOldProt;
+	VirtualProtect(jit_code_region, CODE_MAX, PAGE_EXECUTE_READ, &dwOldProt);
+#else
+	mprotect(jit_code_region, CODE_MAX, PROT_EXEC | PROT_READ);
+#endif
 }
 
 /*
@@ -147,18 +198,14 @@ jit_free(
 	 struct rt_env *rt,
 	 struct rt_func *func)
 {
-#if defined(TARGET_WINDOWS)
-	VirtualFree(func->jit_code, CODE_MAX, MEM_DECOMMIT);
-#else
-	munmap(func->jit_code, CODE_MAX);
-#endif
+	/* XXX: */
 }
 
 /*
  * Assembler output functions
  */
 
-/* Serif */
+/* Decoration */
 #define ASM
 
 /* Registers */
@@ -226,7 +273,7 @@ jit_put_word(
 }
 
 /* mov */
-#define MOV(rd, rs)		if (!jit_put_mov(ctx, rd, rs)) return false
+#define MOV(rd, rs)			if (!jit_put_mov(ctx, rd, rs)) return false
 static INLINE bool
 jit_put_mov(
 	struct jit_context *ctx,
@@ -242,7 +289,7 @@ jit_put_mov(
 }
 
 /* movz */
-#define MOVZ(rd, imm, lsl)	if (!jit_put_movz(ctx, rd, imm, lsl)) return false
+#define MOVZ(rd, imm, lsl)		if (!jit_put_movz(ctx, rd, imm, lsl)) return false
 static INLINE bool
 jit_put_movz(
 	struct jit_context *ctx,
@@ -260,7 +307,7 @@ jit_put_movz(
 }
 
 /* movk */
-#define MOVK(rd, imm, lsl)	if (!jit_put_movk(ctx, rd, imm, lsl)) return false
+#define MOVK(rd, imm, lsl)		if (!jit_put_movk(ctx, rd, imm, lsl)) return false
 static INLINE bool
 jit_put_movk(
 	struct jit_context *ctx,
@@ -278,8 +325,8 @@ jit_put_movk(
 }
 
 /* ldr imm */
-#define LDR(rd, rs)		if (!jit_put_ldr_imm(ctx, rd, rs, 0)) return false
-#define LDR_IMM(rd, rs, imm)	if (!jit_put_ldr_imm(ctx, rd, rs, imm)) return false
+#define LDR(rd, rs)			if (!jit_put_ldr_imm(ctx, rd, rs, 0)) return false
+#define LDR_IMM(rd, rs, imm)		if (!jit_put_ldr_imm(ctx, rd, rs, imm)) return false
 static bool
 jit_put_ldr_imm(
 	struct jit_context *ctx,
@@ -297,8 +344,8 @@ jit_put_ldr_imm(
 }
 
 /* str imm */
-#define STR(rs, rd)		if (!jit_put_str_imm(ctx, rs, rd, 0)) return false
-#define STR_IMM(rs, rd, imm)	if (!jit_put_str_imm(ctx, rs, rd, imm)) return false
+#define STR(rs, rd)			if (!jit_put_str_imm(ctx, rs, rd, 0)) return false
+#define STR_IMM(rs, rd, imm)		if (!jit_put_str_imm(ctx, rs, rd, imm)) return false
 static bool
 jit_put_str_imm(
 	struct jit_context *ctx,
@@ -316,7 +363,7 @@ jit_put_str_imm(
 }
 
 /* ldp xN, xM, [xD, #imm] */
-#define LDP(ra, rb, rs, imm)	if (!jit_put_ldp(ctx, ra, rb, rs, imm)) return false
+#define LDP(ra, rb, rs, imm)		if (!jit_put_ldp(ctx, ra, rb, rs, imm)) return false
 static INLINE bool
 jit_put_ldp(
 	struct jit_context *ctx,
@@ -336,7 +383,7 @@ jit_put_ldp(
 }
 
 /* stp xN, xM, [xD, #imm] */
-#define STP(ra, rb, rd, imm)	if (!jit_put_stp(ctx, ra, rb, rd, imm)) return false
+#define STP(ra, rb, rd, imm)		if (!jit_put_stp(ctx, ra, rb, rd, imm)) return false
 static INLINE bool
 jit_put_stp(
 	struct jit_context *ctx,
@@ -356,7 +403,7 @@ jit_put_stp(
 }
 
 /* ldp xN, xM, [sp], #16 */
-#define LDP_POP(ra, rb)		if (!jit_put_ldp_pop(ctx, ra, rb)) return false
+#define LDP_POP(ra, rb)			if (!jit_put_ldp_pop(ctx, ra, rb)) return false
 static INLINE bool
 jit_put_ldp_pop(
 	struct jit_context *ctx,
@@ -372,7 +419,7 @@ jit_put_ldp_pop(
 }
 
 /* stp xN, xM, [sp, #-16]! */
-#define STP_PUSH(ra, rb)	if (!jit_put_stp_push(ctx, ra, rb)) return false
+#define STP_PUSH(ra, rb)		if (!jit_put_stp_push(ctx, ra, rb)) return false
 static INLINE bool
 jit_put_stp_push(
 	struct jit_context *ctx,
@@ -388,7 +435,7 @@ jit_put_stp_push(
 }
 
 /* add */
-#define ADD(rd, ra, rb)		if (!jit_put_add(ctx, rd, ra, rb)) return false
+#define ADD(rd, ra, rb)			if (!jit_put_add(ctx, rd, ra, rb)) return false
 static bool
 jit_put_add(
 	struct jit_context *ctx,
@@ -424,7 +471,7 @@ jit_put_add_imm(
 }
 
 /* sub */
-#define SUB(rd, ra, rb)		if (!jit_put_sub(ctx, rd, ra, rb)) return false
+#define SUB(rd, ra, rb)			if (!jit_put_sub(ctx, rd, ra, rb)) return false
 static bool
 jit_put_sub(
 	struct jit_context *ctx,
@@ -460,7 +507,7 @@ jit_put_sub_imm(
 }
 
 /* mul */
-#define MUL(rd, ra, rb)		if (!jit_put_mul(ctx, rd, ra, rb)) return false
+#define MUL(rd, ra, rb)			if (!jit_put_mul(ctx, rd, ra, rb)) return false
 static bool
 jit_put_mul(
 	struct jit_context *ctx,
@@ -494,7 +541,7 @@ jit_put_lsl4(
 }
 
 /* cmp_reg */
-#define CMP_REG(ra, rb)		if (!jit_put_cmp_reg(ctx, ra, rb)) return false
+#define CMP_REG(ra, rb)			if (!jit_put_cmp_reg(ctx, ra, rb)) return false
 static bool
 jit_put_cmp_reg(
 	struct jit_context *ctx,
@@ -526,7 +573,7 @@ jit_put_cmp_imm(
 }
 
 /* cmp w3, w4 */
-#define CMP_W3_W4()		if (!jit_put_cmp_w3_w4(ctx)) return false
+#define CMP_W3_W4()			if (!jit_put_cmp_w3_w4(ctx)) return false
 static bool
 jit_put_cmp_w3_w4(
 	struct jit_context *ctx)

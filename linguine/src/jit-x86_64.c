@@ -47,6 +47,11 @@
 #define PATCH_JE		1
 #define PATCH_JNE		2
 
+/* Generated code. */
+static uint8_t *jit_code_region;
+static uint8_t *jit_code_region_cur;
+static uint8_t *jit_code_region_tail;
+
 /* JIT codegen context */
 struct jit_context {
 	struct rt_env *rt;
@@ -84,6 +89,9 @@ struct jit_context {
 };
 
 /* Forward declaration */
+static bool jit_map_memory_region(void);
+static void jit_map_writable(void);
+static void jit_map_executable(void);
 static bool jit_visit_bytecode(struct jit_context *ctx);
 static bool jit_patch_branch(struct jit_context *ctx, int patch_index);
 
@@ -96,29 +104,32 @@ jit_build(
 	  struct rt_func *func)
 {
 	struct jit_context ctx;
-	int pc;
 	int i;
 
+	/* If the first call, map a memory region for the generated code. */
+	if (jit_code_region == NULL) {
+		if (!jit_map_memory_region()) {
+			rt_error(rt, "Memory mapping failed.");
+			return false;
+		}
+	}
+
+	/* Make a context. */
 	memset(&ctx, 0, sizeof(struct jit_context));
+	ctx.code_top = jit_code_region_cur;
+	ctx.code_end = jit_code_region_tail;
+	ctx.code = ctx.code_top;
 	ctx.rt = rt;
 	ctx.func = func;
 
-	/* Map a new memory region for the generated code. */
-#if defined(TARGET_WINDOWS)
-	ctx.code_top = VirtualAlloc(NULL, CODE_MAX, MEM_COMMIT, PAGE_READWRITE);
-#else
-	ctx.code_top = mmap(NULL, CODE_MAX, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-#endif
-	if (ctx.code_top == NULL) {
-		rt_error(rt, "mmap() failed.");
-		return false;
-	}
-	ctx.code_end = ctx.code_top + CODE_MAX;
-	ctx.code = ctx.code_top;
+	/* Make code writable and non-executable. */
+	jit_map_writable();
 
 	/* Visit over the bytecode. */
 	if (!jit_visit_bytecode(&ctx))
 		return false;
+
+	jit_code_region_cur = ctx.code;
 
 	/* Patch branches. */
 	for (i = 0; i < ctx.branch_patch_count; i++) {
@@ -127,16 +138,56 @@ jit_build(
 	}
 
 	/* Make code executable and non-writable. */
-#if defined(TARGET_WINDOWS)
-	DWORD dwOldProt;
-	VirtualProtect(ctx.code_top, CODE_MAX, PAGE_EXECUTE_READ, &dwOldProt);
-#else
-	mprotect(ctx.code_top, CODE_MAX, PROT_EXEC | PROT_READ);
-#endif
+	jit_map_executable();
 
 	func->jit_code = (bool (*)(struct rt_env *))ctx.code_top;
 
 	return true;
+}
+
+/* Map a memory region for the generated code. */
+static bool
+jit_map_memory_region(
+	void)
+{
+#if defined(TARGET_WINDOWS)
+	jit_code_region = VirtualAlloc(NULL, CODE_MAX, MEM_COMMIT, PAGE_READWRITE);
+#else
+	jit_code_region = mmap(NULL, CODE_MAX, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+#endif
+	if (jit_code_region == NULL)
+		return false;
+
+	jit_code_region_cur = jit_code_region;
+	jit_code_region_tail = jit_code_region + CODE_MAX;
+
+	return true;
+}
+
+/* Make the region writable and non-executable. */
+static void
+jit_map_writable(
+	void)
+{
+#if defined(TARGET_WINDOWS)
+	DWORD dwOldProt;
+	VirtualProtect(jit_code_region, CODE_MAX, PAGE_READ_WRITE, &dwOldProt);
+#else
+	mprotect(jit_code_region, CODE_MAX, PROT_READ | PROT_WRITE);
+#endif
+}
+
+/* Make the region executable and non-writable. */
+static void
+jit_map_executable(
+	void)
+{
+#if defined(TARGET_WINDOWS)
+	DWORD dwOldProt;
+	VirtualProtect(jit_code_region, CODE_MAX, PAGE_EXECUTE_READ, &dwOldProt);
+#else
+	mprotect(jit_code_region, CODE_MAX, PROT_EXEC | PROT_READ);
+#endif
 }
 
 /*
@@ -147,11 +198,7 @@ jit_free(
 	 struct rt_env *rt,
 	 struct rt_func *func)
 {
-#if defined(TARGET_WINDOWS)
-	VirtualFree(func->jit_code, CODE_MAX, MEM_DECOMMIT);
-#else
-	munmap(func->jit_code, CODE_MAX);
-#endif
+	/* XXX: */
 }
 
 /*

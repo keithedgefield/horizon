@@ -11,7 +11,7 @@ that both beginners and experienced developers can easily use.
 
 ## Linguine: A Fast, Modern, Compact Scripting Language
 
-Linguine is a fast, portable scripting language for application
+Linguine is a fast, compact scripting language for application
 integration. With its C-like syntax, it includes modern features like
 iterators and dictionaries, making it both beginner-friendly and
 powerful. The language includes a Just-in-Time compiler that generates
