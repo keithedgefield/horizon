@@ -1,4 +1,4 @@
-CC=cc
+CC=gcc
 LD=ld
 AR=ar
 YACC=bison
@@ -8,7 +8,7 @@ CPPFLAGS=-I../../include -DUSE_JIT
 CFLAGS=-O0 -g3
 LDFLAGS=-lm
 
-OBJS=\
+LIB_OBJS=\
 	parser.tab.o \
 	lexer.yy.o \
 	ast.o \
@@ -17,14 +17,18 @@ OBJS=\
 	runtime.o \
 	jit-arm64.o \
 	jit-x86_64.o \
-	jit-x86.o
+	jit-x86.o \
+	cback.o
+
+CMD_OBJS=\
+	command.o
 
 all: linguine
 
-linguine: command.o liblinguine.a
+linguine: $(CMD_OBJS) liblinguine.a
 	$(CC) -o linguine $(CFLAGS) $^
 
-liblinguine.a: $(OBJS)
+liblinguine.a: $(LIB_OBJS)
 	$(AR) rcs liblinguine.a $^
 
 command.o: ../../src/command.c
@@ -61,6 +65,9 @@ jit-x86_64.o: ../../src/jit-x86_64.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
 jit-x86.o: ../../src/jit-x86.c
+	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
+cback.o: ../../src/cback.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
 clean:

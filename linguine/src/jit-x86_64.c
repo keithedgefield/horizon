@@ -13,7 +13,7 @@
 
 #if defined(ARCH_X86_64) && defined(USE_JIT)
 
-#include "runtime.h"
+#include "linguine/runtime.h"
 
 #include <stdio.h>
 #include <stdlib.h>

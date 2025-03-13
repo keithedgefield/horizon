@@ -203,7 +203,7 @@ Same as standalone execution.
  +-------------------+        +--------------------+       +---------------+
 ```
 
-## Internal Data Flow
+## Compilation Stages
 
 ```
  +--------+  parser  +-----+  HIR-pass  +-----+  LIR-pass  +-----+  JIT-pass  +-------------+
@@ -211,7 +211,16 @@ Same as standalone execution.
  +--------+          +-----+            +-----+            +-----+            +-------------+
 ```
 
-Where:
-* AST: represents source code syntax tree. (Abstract Syntax Tree)
-* HIR: represents a structured list of statements, which is suitable for optimizations.
-* LIR: is a linear list of runnable instructions, also called `bytecode`.
+The Linguine compiler first transforms source code into an AST
+(abstract syntax tree)—a data structure optimized for program
+parsing.
+
+The AST is then converted to HIR (high-level intermediate
+representation), which is better suited for optimization. Future
+versions will implement additional optimizers.
+
+Next, the HIR is transformed into LIR (low-level intermediate
+representation), also known as "bytecode"—a byte sequence designed
+for interpretation.
+
+Finally, the JIT compiler translates this LIR into native code.

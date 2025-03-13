@@ -368,6 +368,7 @@ rt_register_cfunc(
 		rt_out_of_memory(rt);
 		return false;
 	}
+	memset(func, 0, sizeof(struct rt_func));
 
 	func->name = strdup(name);
 	if (func->name == NULL) {
