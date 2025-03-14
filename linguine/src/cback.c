@@ -110,16 +110,16 @@ cback_translate_func(
 	fprintf(fp, "\n");
 	fprintf(fp, "bool L_%s(struct rt_env *rt)\n", func->func_name);
 	fprintf(fp, "{\n");
-	fprintf(fp, "struct rt_value tmpvar[%d];\n", func->tmpvar_size);
-	fprintf(fp, "rt->frame->tmpvar = &tmpvar[0];\n");
+	fprintf(fp, "    struct rt_value tmpvar[%d];\n", func->tmpvar_size);
+	fprintf(fp, "    rt->frame->tmpvar = &tmpvar[0];\n");
 
 	/* Visit a bytecode array. */
 	if (!cback_visit_bytecode(func))
 		return false;
 
 	/* Put an epilogue code. */
-	fprintf(fp, "rt->frame->tmpvar = NULL;\n");
-	fprintf(fp, "return true;\n");
+	fprintf(fp, "    rt->frame->tmpvar = NULL;\n");
+	fprintf(fp, "    return true;\n");
 	fprintf(fp, "}\n\n");
 
 	return true;
@@ -280,8 +280,8 @@ cback_visit_iconst_op(
 
 	*pc += 1 + 2 + 4;
 
-	fprintf(fp, "rt->frame->tmpvar[%d].type = RT_VALUE_INT;\n", dst);
-	fprintf(fp, "rt->frame->tmpvar[%d].val.i = %d;\n", dst, val);
+	fprintf(fp, "    rt->frame->tmpvar[%d].type = RT_VALUE_INT;\n", dst);
+	fprintf(fp, "    rt->frame->tmpvar[%d].val.i = %d;\n", dst, val);
 
 	return true;
 }
@@ -318,8 +318,8 @@ cback_visit_fconst_op(
 
 	*pc += 1 + 2 + 4;
 
-	fprintf(fp, "rt->frame->tmpvar[%d].type = RT_VALUE_FLOAT;\n", dst);
-	fprintf(fp, "rt->frame->tmpvar[%d].val.f = %f;\n", dst, val);
+	fprintf(fp, "    rt->frame->tmpvar[%d].type = RT_VALUE_FLOAT;\n", dst);
+	fprintf(fp, "    rt->frame->tmpvar[%d].val.f = %f;\n", dst, val);
 
 	return true;
 }
@@ -356,8 +356,8 @@ cback_visit_sconst_op(
 
 	*pc += 1 + 2 + len + 1;
 
-	fprintf(fp, "if (!rt_make_string(rt, &rt->frame->tmpvar[%d], \"%s\"))\n", dst, s);
-	fprintf(fp, "    return false;\n");
+	fprintf(fp, "    if (!rt_make_string(rt, &rt->frame->tmpvar[%d], \"%s\"))\n", dst, s);
+	fprintf(fp, "        return false;\n");
 
 	return true;
 }
@@ -385,8 +385,8 @@ cback_visit_aconst_op(
 
 	*pc += 1 + 2;
 
-	fprintf(fp, "if (!rt_make_empty_array(rt, &rt->frame->tmpvar[%d]))\n", dst);
-	fprintf(fp, "    return false;\n");
+	fprintf(fp, "    if (!rt_make_empty_array(rt, &rt->frame->tmpvar[%d]))\n", dst);
+	fprintf(fp, "        return false;\n");
 
 	return true;
 }
@@ -414,8 +414,8 @@ cback_visit_dconst_op(
 
 	*pc += 1 + 2;
 
-	fprintf(fp, "if (!rt_make_empty_dict(rt, &rt->frame->tmpvar[%d]))\n", dst);
-	fprintf(fp, "    return false;\n");
+	fprintf(fp, "    if (!rt_make_empty_dict(rt, &rt->frame->tmpvar[%d]))\n", dst);
+	fprintf(fp, "        return false;\n");
 
 	return true;
 }
@@ -444,7 +444,7 @@ cback_visit_inc_op(
 
 	*pc += 1 + 2;
 
-	fprintf(fp, "rt->frame->tmpvar[%d].val.i++;\n", dst);
+	fprintf(fp, "    rt->frame->tmpvar[%d].val.i++;\n", dst);
 
 	return true;
 }
@@ -697,8 +697,8 @@ cback_visit_loadsymbol_op(
 
 	*pc += 1 + 2 + len + 1;
 
-	fprintf(fp, "if (!rt_loadsymbol_helper(rt, %d, \"%s\"))\n", dst, symbol);
-	fprintf(fp, "    return false;\n");
+	fprintf(fp, "    if (!rt_loadsymbol_helper(rt, %d, \"%s\"))\n", dst, symbol);
+	fprintf(fp, "        return false;\n");
 
 	return true;
 }
@@ -727,8 +727,8 @@ cback_visit_storesymbol_op(
 
 	*pc += 1 + len + 1 + 2;
 
-	fprintf(fp, "if (!rt_storesymbol_helper(rt, \"%s\", %d))\n", symbol, src);
-	fprintf(fp, "    return false;\n");
+	fprintf(fp, "    if (!rt_storesymbol_helper(rt, \"%s\", %d))\n", symbol, src);
+	fprintf(fp, "        return false;\n");
 
 	return true;
 }
@@ -772,8 +772,8 @@ cback_visit_loaddot_op(
 
 	*pc += 1 + 2 + 2 + len + 1;
 
-	fprintf(fp, "if (!rt_loaddot_helper(rt, %d, %d, \"%s\"))\n", dst, dict, field);
-	fprintf(fp, "    return false;\n");
+	fprintf(fp, "    if (!rt_loaddot_helper(rt, %d, %d, \"%s\"))\n", dst, dict, field);
+	fprintf(fp, "        return false;\n");
 
 	return true;
 }
@@ -819,8 +819,8 @@ cback_visit_storedot_op(
 
 	*pc += 1 + 2 + 2 + len + 1;
 
-	fprintf(fp, "if (!rt_storedot_helper(rt, %d, \"%s\", %d))\n", dict, field, src);
-	fprintf(fp, "    return false;\n");
+	fprintf(fp, "    if (!rt_storedot_helper(rt, %d, \"%s\", %d))\n", dict, field, src);
+	fprintf(fp, "        return false;\n");
 
 	return true;
 }
@@ -861,14 +861,14 @@ cback_visit_call_op(
 
 	*pc += 6 + arg_count * 2;
 
-	fprintf(fp, "{\n");
-	fprintf(fp, "    int arg[%d] = {", arg_count);
+	fprintf(fp, "    {\n");
+	fprintf(fp, "        int arg[%d] = {", arg_count);
 	for (i = 0; i < arg_count; i++)
 		fprintf(fp, "%d,", arg[i]);
 	fprintf(fp, "};\n");
-	fprintf(fp, "    if (!rt_call_helper(rt, %d, %d, %d, arg))\n", dst_tmpvar, func_tmpvar, arg_count);
-	fprintf(fp, "        return false;\n");
-	fprintf(fp, "};\n");
+	fprintf(fp, "        if (!rt_call_helper(rt, %d, %d, %d, arg))\n", dst_tmpvar, func_tmpvar, arg_count);
+	fprintf(fp, "            return false;\n");
+	fprintf(fp, "    };\n");
 
 	return true;
 }
@@ -923,14 +923,14 @@ cback_visit_thiscall_op(
 
 	*pc += 1 + 2 + 2 + len + 1 + 1 + arg_count * 2;
 
-	fprintf(fp, "{\n");
-	fprintf(fp, "    int arg[%d] = {", arg_count);
+	fprintf(fp, "    {\n");
+	fprintf(fp, "        int arg[%d] = {", arg_count);
 	for (i = 0; i < arg_count; i++)
 		fprintf(fp, "%d,", arg[i]);
 	fprintf(fp, "};\n");
-	fprintf(fp, "    if (!rt_thiscall_helper(rt, %d, %d, \"%s\", %d, arg))\n", dst_tmpvar, obj_tmpvar, name, arg_count);
-	fprintf(fp, "        return false;\n");
-	fprintf(fp, "};\n");
+	fprintf(fp, "        if (!rt_thiscall_helper(rt, %d, %d, \"%s\", %d, arg))\n", dst_tmpvar, obj_tmpvar, name, arg_count);
+	fprintf(fp, "            return false;\n");
+	fprintf(fp, "    };\n");
 
 	return true;
 }
@@ -961,7 +961,7 @@ cback_visit_jmp_op(
 
 	*pc += 1 + 4;
 
-	fprintf(fp, "goto L_pc_%d;\n", target);
+	fprintf(fp, "    goto L_pc_%d;\n", target);
 
 	return true;
 }
@@ -1000,8 +1000,8 @@ cback_visit_jmpiftrue_op(
 
 	*pc += 1 + 2 + 4;
 
-	fprintf(fp, "if (rt->frame->tmpvar[%d].val.i != 0)\n", src);
-	fprintf(fp, "    goto L_pc_%d;\n", target);
+	fprintf(fp, "    if (rt->frame->tmpvar[%d].val.i != 0)\n", src);
+	fprintf(fp, "        goto L_pc_%d;\n", target);
 
 	return true;
 }
@@ -1040,8 +1040,8 @@ cback_visit_jmpiffalse_op(
 
 	*pc += 1 + 2 + 4;
 
-	fprintf(fp, "if (rt->frame->tmpvar[%d].val.i == 0)\n", src);
-	fprintf(fp, "    goto L_pc_%d;\n", target);
+	fprintf(fp, "    if (rt->frame->tmpvar[%d].val.i == 0)\n", src);
+	fprintf(fp, "        goto L_pc_%d;\n", target);
 
 	return true;
 }
