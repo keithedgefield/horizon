@@ -566,7 +566,7 @@ term		: TOKEN_INT
 		}
 		| TOKEN_FLOAT
 		{
-			$$ = ast_accept_float_term($1);
+			$$ = ast_accept_float_term((float)$1);
 			debug("term: float");
 		}
 		| TOKEN_STR

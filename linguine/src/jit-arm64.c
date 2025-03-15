@@ -198,6 +198,9 @@ jit_free(
 	 struct rt_env *rt,
 	 struct rt_func *func)
 {
+	UNUSED_PARAMETER(rt);
+	UNUSED_PARAMETER(func);
+
 	/* XXX: */
 }
 
@@ -244,11 +247,11 @@ jit_free(
 #define REG_SP		31
 
 /* Immediate */
-#define IMM8(v)		(v)
-#define IMM9(v)		(v)
-#define IMM12(v)	(v)
-#define IMM16(v)	(v)
-#define IMM19(v)	(v)
+#define IMM8(v)		(uint32_t)(v)
+#define IMM9(v)		(uint32_t)(v)
+#define IMM12(v)	(uint32_t)(v)
+#define IMM16(v)	(uint32_t)(v)
+#define IMM19(v)	(uint32_t)(v)
 
 /* Shift */
 #define LSL_0		0
@@ -272,30 +275,14 @@ jit_put_word(
 	return true;
 }
 
-/* mov */
-#define MOV(rd, rs)			if (!jit_put_mov(ctx, rd, rs)) return false
-static INLINE bool
-jit_put_mov(
-	struct jit_context *ctx,
-	int rd,
-	int rs)
-{
-	if (!jit_put_word(ctx,
-			  0xaa0003e0 | 		/* orr */
-			  rd |			/* rd */
-			  (rs << 16)))		/* rs */
-		return false;
-	return true;
-}
-
 /* movz */
 #define MOVZ(rd, imm, lsl)		if (!jit_put_movz(ctx, rd, imm, lsl)) return false
 static INLINE bool
 jit_put_movz(
 	struct jit_context *ctx,
-	int n,
-	uint16_t imm,
-	int lsl)
+	uint32_t n,
+	uint32_t imm,
+	uint32_t lsl)
 {
 	if (!jit_put_word(ctx,
 			  0xd2800000 | 		/* movz */
@@ -311,9 +298,9 @@ jit_put_movz(
 static INLINE bool
 jit_put_movk(
 	struct jit_context *ctx,
-	int n,
-	uint16_t imm,
-	int lsl)
+	uint32_t n,
+	uint32_t imm,
+	uint32_t lsl)
 {
 	if (!jit_put_word(ctx,
 			  0xf2800000 |		/* movk */
@@ -330,9 +317,9 @@ jit_put_movk(
 static bool
 jit_put_ldr_imm(
 	struct jit_context *ctx,
-	int rd,
-	int rs,
-	int imm)
+	uint32_t rd,
+	uint32_t rs,
+	uint32_t imm)
 {
 	if (!jit_put_word(ctx,
 			  0xf9400000 |			/* ldr */
@@ -349,9 +336,9 @@ jit_put_ldr_imm(
 static bool
 jit_put_str_imm(
 	struct jit_context *ctx,
-	int rs,
-	int rd,
-	int imm)
+	uint32_t rs,
+	uint32_t rd,
+	uint32_t imm)
 {
 	if (!jit_put_word(ctx,
 			  0xf9000000 |			/* movk */
@@ -362,53 +349,13 @@ jit_put_str_imm(
 	return true;
 }
 
-/* ldp xN, xM, [xD, #imm] */
-#define LDP(ra, rb, rs, imm)		if (!jit_put_ldp(ctx, ra, rb, rs, imm)) return false
-static INLINE bool
-jit_put_ldp(
-	struct jit_context *ctx,
-	int ra,
-	int rb,
-	int rs,
-	int imm)
-{
-	if (!jit_put_word(ctx,
-			  0xa9400000 | 			/* stp */
-			  ra |				/* ra */
-			  (rb << 10) |			/* rb */
-			  (rs << 5) |			/* rd */
-			  ((imm & 0x7f) << 15)))	/* imm */
-		return false;
-	return true;
-}
-
-/* stp xN, xM, [xD, #imm] */
-#define STP(ra, rb, rd, imm)		if (!jit_put_stp(ctx, ra, rb, rd, imm)) return false
-static INLINE bool
-jit_put_stp(
-	struct jit_context *ctx,
-	int ra,
-	int rb,
-	int rd,
-	int imm)
-{
-	if (!jit_put_word(ctx,
-			  0xa900000 | 			/* stp */
-			  ra |				/* ra */
-			  (rb << 10) |			/* rb */
-			  (rd << 5) |			/* rd */
-			  ((imm & 0x7f) << 15)))	/* imm */
-		return false;
-	return true;
-}
-
 /* ldp xN, xM, [sp], #16 */
 #define LDP_POP(ra, rb)			if (!jit_put_ldp_pop(ctx, ra, rb)) return false
 static INLINE bool
 jit_put_ldp_pop(
 	struct jit_context *ctx,
-	int ra,
-	int rb)
+	uint32_t ra,
+	uint32_t rb)
 {
 	if (!jit_put_word(ctx,
 			  0xa8c103e0 | 		/* ldp */
@@ -423,8 +370,8 @@ jit_put_ldp_pop(
 static INLINE bool
 jit_put_stp_push(
 	struct jit_context *ctx,
-	int ra,
-	int rb)
+	uint32_t ra,
+	uint32_t rb)
 {
 	if (!jit_put_word(ctx,
 			  0xa9bf03e0 | 		/* stp */
@@ -439,9 +386,9 @@ jit_put_stp_push(
 static bool
 jit_put_add(
 	struct jit_context *ctx,
-	int rd,
-	int ra,
-	int rb)
+	uint32_t rd,
+	uint32_t ra,
+	uint32_t rb)
 {
 	if (!jit_put_word(ctx,
 			  0x8b000000 |		/* add */
@@ -457,9 +404,9 @@ jit_put_add(
 static bool
 jit_put_add_imm(
 	struct jit_context *ctx,
-	int rd,
-	int rs,
-	int imm)
+	uint32_t rd,
+	uint32_t rs,
+	uint32_t imm)
 {
 	if (!jit_put_word(ctx,
 			  0x91000000 |			/* add */
@@ -470,67 +417,13 @@ jit_put_add_imm(
 	return true;
 }
 
-/* sub */
-#define SUB(rd, ra, rb)			if (!jit_put_sub(ctx, rd, ra, rb)) return false
-static bool
-jit_put_sub(
-	struct jit_context *ctx,
-	int rd,
-	int ra,
-	int rb)
-{
-	if (!jit_put_word(ctx,
-			  0xcb000000 |		/* sub */
-			  rd |			/* rd */
-			  (ra << 5) |		/* ra */
-			  (rb << 16)))		/* rb */
-		return false;
-	return true;
-}
-
-/* sub_imm */
-#define SUB_IMM(rd, rs, imm)		if (!jit_put_sub_imm(ctx, rd, rs, imm)) return false
-static bool
-jit_put_sub_imm(
-	struct jit_context *ctx,
-	int rd,
-	int rs,
-	int imm)
-{
-	if (!jit_put_word(ctx,
-			  0xd1000000 |			/* add */
-			  rd |				/* rd */
-			  (rs << 5) |			/* rs */
-			  ((imm & 0xfff) << 10)))	/* imm */
-		return false;
-	return true;
-}
-
-/* mul */
-#define MUL(rd, ra, rb)			if (!jit_put_mul(ctx, rd, ra, rb)) return false
-static bool
-jit_put_mul(
-	struct jit_context *ctx,
-	int rd,
-	int ra,
-	int rb)
-{
-	if (!jit_put_word(ctx,
-			  0x9b007c00 |		/* madd */
-			  rd |			/* rd */
-			  (ra << 5) |		/* ra */
-			  (rb << 16)))		/* rb */
-		return false;
-	return true;
-}
-
 /* lsl #4 */
 #define LSL_4(rd, rs)			if (!jit_put_lsl4(ctx, rd, rs)) return false
 static bool
 jit_put_lsl4(
 	struct jit_context *ctx,
-	int rd,
-	int rs)
+	uint32_t rd,
+	uint32_t rs)
 {
 	if (!jit_put_word(ctx,
 			  0xd37cec00 |		/* madd */
@@ -540,29 +433,13 @@ jit_put_lsl4(
 	return true;
 }
 
-/* cmp_reg */
-#define CMP_REG(ra, rb)			if (!jit_put_cmp_reg(ctx, ra, rb)) return false
-static bool
-jit_put_cmp_reg(
-	struct jit_context *ctx,
-	int ra,
-	int rb)
-{
-	if (!jit_put_word(ctx,
-			  0xeb00001f |			/* add */
-			  (ra << 5) |			/* rs */
-			  (rb << 16)))	/* imm */
-		return false;
-	return true;
-}
-
 /* cmp_imm */
 #define CMP_IMM(rs, imm)		if (!jit_put_cmp_imm(ctx, rs, imm)) return false
 static bool
 jit_put_cmp_imm(
 	struct jit_context *ctx,
-	int rs,
-	int imm)
+	uint32_t rs,
+	uint32_t imm)
 {
 	if (!jit_put_word(ctx,
 			  0xf100001f |			/* add */
@@ -588,7 +465,7 @@ jit_put_cmp_w3_w4(
 static INLINE bool
 jit_put_bal(
 	struct jit_context *ctx,
-	int rel)    
+	uint32_t rel)    
 {
 	if (!jit_put_word(ctx,
 			  0x54000000 |		       			/* b.cond */
@@ -603,7 +480,7 @@ jit_put_bal(
 static INLINE bool
 jit_put_beq(
 	struct jit_context *ctx,
-	int rel)    
+	uint32_t rel)    
 {
 	if (!jit_put_word(ctx,
 			  0x54000000 |		       			/* b.cond */
@@ -618,7 +495,7 @@ jit_put_beq(
 static INLINE bool
 jit_put_bne(
 	struct jit_context *ctx,
-	int rel)    
+	uint32_t rel)    
 {
 	if (!jit_put_word(ctx,
 			  0x54000000 |		       			/* b.cond */
@@ -633,7 +510,7 @@ jit_put_bne(
 static INLINE bool
 jit_put_blr(
 	struct jit_context *ctx,
-	int rd)    
+	uint32_t rd)
 {
 	if (!jit_put_word(ctx,
 			  0xd63f0000 |		       	/* blr */
@@ -689,10 +566,10 @@ jit_get_opr_imm32(
 		return false;
 	}
 
-	*d = (ctx->func->bytecode[ctx->lpc] << 24) |
-	     (ctx->func->bytecode[ctx->lpc + 1] << 16) |
-	     (ctx->func->bytecode[ctx->lpc + 2] << 8) |
-	      ctx->func->bytecode[ctx->lpc + 3];
+	*d = ((uint32_t)ctx->func->bytecode[ctx->lpc] << 24) |
+		(uint32_t)(ctx->func->bytecode[ctx->lpc + 1] << 16) |
+		(uint32_t)(ctx->func->bytecode[ctx->lpc + 2] << 8) |
+		(uint32_t)ctx->func->bytecode[ctx->lpc + 3];
 
 	ctx->lpc += 4;
 
@@ -751,7 +628,7 @@ jit_get_opr_string(
 {
 	int len;
 
-	len = strlen((const char *)&ctx->func->bytecode[ctx->lpc]);
+	len = (int)strlen((const char *)&ctx->func->bytecode[ctx->lpc]);
 	if (ctx->lpc + len + 1 > ctx->func->bytecode_size) {
 		rt_error(ctx->rt, BROKEN_BYTECODE);
 		return false;
@@ -835,7 +712,6 @@ jit_visit_lineinfo_op(
 	struct jit_context *ctx)
 {
 	uint32_t line;
-	uint64_t addr;
 
 	CONSUME_IMM32(line);
 
@@ -853,7 +729,6 @@ static INLINE bool
 jit_visit_assign_op(
 	struct jit_context *ctx)
 {
-	int pc;
 	int dst;
 	int src;
 
@@ -984,7 +859,7 @@ jit_visit_sconst_op(
 		CMP_IMM		(REG_X0, IMM12(0));
 		LDP_POP		(REG_X30, REG_X1);
 		LDP_POP		(REG_X0, REG_X1);
-		BEQ		(IMM19((uint64_t)ctx->exception_code - (uint64_t)ctx->code));
+		BEQ		(IMM19((uint32_t)(ptrdiff_t)((uint64_t)ctx->exception_code - (uint64_t)ctx->code)));
 	}
 
 	return true;
@@ -1071,7 +946,6 @@ static INLINE bool
 jit_visit_inc_op(
 	struct jit_context *ctx)
 {
-	struct rt_value *val;
 	int dst;
 
 	CONSUME_TMPVAR(dst);
@@ -1513,7 +1387,7 @@ jit_visit_loadsymbol_op(
 
 	CONSUME_TMPVAR(dst);
 	CONSUME_STRING(src_s);
-	src = (intptr_t)src_s;
+	src = (uint64_t)(intptr_t)src_s;
 
 	/* if (!jit_loadsymbol_helper(rt, dst, src)) return false; */
 	ASM {
@@ -1559,7 +1433,7 @@ jit_visit_storesymbol_op(
 
 	CONSUME_STRING(dst_s);
 	CONSUME_TMPVAR(src);
-	dst = (intptr_t)dst_s;
+	dst = (uint64_t)(intptr_t)dst_s;
 
 	/* if (!rt_storesymbol_helper(rt, dst, src)) return false; */
 	ASM {
@@ -1607,7 +1481,7 @@ jit_visit_loaddot_op(
 	CONSUME_TMPVAR(dst);
 	CONSUME_TMPVAR(dict);
 	CONSUME_STRING(field_s);
-	field = (intptr_t)field_s;
+	field = (uint64_t)(intptr_t)field_s;
 
 	/* if (!rt_loaddot_helper(rt, dst, dict, field)) return false; */
 	ASM {
@@ -1658,7 +1532,7 @@ jit_visit_storedot_op(
 	CONSUME_TMPVAR(dict);
 	CONSUME_STRING(field_s);
 	CONSUME_TMPVAR(src);
-	field = (intptr_t)field_s;
+	field = (uint64_t)(intptr_t)field_s;
 
 	/* if (!jit_loaddot_helper(rt, dst, dict, field)) return false; */
 	ASM {
@@ -1721,7 +1595,7 @@ jit_visit_call_op(
 	ASM {
 		BAL		(IMM12(4 + 4 * arg_count));
 	}
-	arg_addr = (intptr_t)ctx->code;
+	arg_addr = (uint64_t)(intptr_t)ctx->code;
 	for (i = 0; i < arg_count; i++)
 		*ctx->code++ = (uint32_t)arg[i];
 
@@ -1791,7 +1665,7 @@ jit_visit_thiscall_op(
 	ASM {
 		BAL		(IMM12(4 + 4 * arg_count));
 	}
-	arg_addr = (intptr_t)ctx->code;
+	arg_addr = (uint64_t)(intptr_t)ctx->code;
 	for (i = 0; i < arg_count; i++)
 		*ctx->code++ = (uint32_t)arg[i];
 
@@ -1848,7 +1722,7 @@ jit_visit_jmp_op(
 	uint32_t target_lpc;
 
 	CONSUME_IMM32(target_lpc);
-	if (target_lpc >= ctx->func->bytecode_size + 1) {
+	if (target_lpc >= (uint32_t)(ctx->func->bytecode_size + 1)) {
 		rt_error(ctx->rt, BROKEN_BYTECODE);
 		return false;
 	}
@@ -1877,7 +1751,7 @@ jit_visit_jmpiftrue_op(
 
 	CONSUME_TMPVAR(src);
 	CONSUME_IMM32(target_lpc);
-	if (target_lpc >= ctx->func->bytecode_size + 1) {
+	if (target_lpc >= (uint32_t)(ctx->func->bytecode_size + 1)) {
 		rt_error(ctx->rt, BROKEN_BYTECODE);
 		return false;
 	}
@@ -1917,7 +1791,7 @@ jit_visit_jmpiffalse_op(
 
 	CONSUME_TMPVAR(src);
 	CONSUME_IMM32(target_lpc);
-	if (target_lpc >= ctx->func->bytecode_size + 1) {
+	if (target_lpc >= (uint32_t)(ctx->func->bytecode_size + 1)) {
 		rt_error(ctx->rt, BROKEN_BYTECODE);
 		return false;
 	}
@@ -1957,7 +1831,7 @@ jit_visit_jmpifeq_op(
 
 	CONSUME_TMPVAR(src);
 	CONSUME_IMM32(target_lpc);
-	if (target_lpc >= ctx->func->bytecode_size + 1) {
+	if (target_lpc >= (uint32_t)(ctx->func->bytecode_size + 1)) {
 		rt_error(ctx->rt, BROKEN_BYTECODE);
 		return false;
 	}
@@ -2042,7 +1916,7 @@ jit_visit_bytecode(
 			rt_error(ctx->rt, "Too big code.");
 			return false;
 		}
-		ctx->pc_entry[ctx->pc_entry_count].lpc = ctx->lpc;
+		ctx->pc_entry[ctx->pc_entry_count].lpc = (uint32_t)ctx->lpc;
 		ctx->pc_entry[ctx->pc_entry_count].code = ctx->code;
 		ctx->pc_entry_count++;
 
@@ -2212,7 +2086,7 @@ jit_visit_bytecode(
 	}
 
 	/* Add the tail PC to the table. */
-	ctx->pc_entry[ctx->pc_entry_count].lpc = ctx->lpc;
+	ctx->pc_entry[ctx->pc_entry_count].lpc = (uint32_t)ctx->lpc;
 	ctx->pc_entry[ctx->pc_entry_count].code = ctx->code;
 	ctx->pc_entry_count++;
 
@@ -2269,7 +2143,7 @@ jit_patch_branch(
 	}
 
 	/* Calc a branch offset. */
-	offset = (intptr_t)target_code - (intptr_t)ctx->branch_patch[patch_index].code;
+	offset = (int)((intptr_t)target_code - (intptr_t)ctx->branch_patch[patch_index].code);
 
 	/* Set the assembler cursor. */
 	ctx->code = ctx->branch_patch[patch_index].code;

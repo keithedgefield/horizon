@@ -142,8 +142,10 @@ static bool run_interpreter(int argc, char *argv[])
 	if (!rt_create(&rt))
 		return false;
 
-	/* Register a print function. */
+	/* Register intrinsics. */
 	if (!rt_register_cfunc(rt, "print", 1, print_param, cfunc_print))
+		return false;
+	if (!rt_register_cfunc(rt, "readline", 0, NULL, cfunc_readline))
 		return false;
 
 	for (i = optind; i < argc; i++) {
@@ -178,6 +180,9 @@ static bool run_interpreter(int argc, char *argv[])
 
 static bool run_binary_compiler(int argc, char *argv[])
 {
+	UNUSED_PARAMETER(argc);
+	UNUSED_PARAMETER(argv);
+
 	return true;
 }
 

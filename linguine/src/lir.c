@@ -153,7 +153,7 @@ lir_build(
 		/* Move to a next. */
 		if (cur_block->stop) {
 			assert(cur_block->succ->type == HIR_BLOCK_END);
-			cur_block->succ->addr = bytecode_top;
+			cur_block->succ->addr = (uint32_t)bytecode_top;
 			break;
 		}
 		cur_block = cur_block->succ;
@@ -187,7 +187,7 @@ lir_build(
 	}
 
 	/* Copy the bytecode. */
-	(*lir_func)->bytecode = malloc(bytecode_top);
+	(*lir_func)->bytecode = malloc((size_t)bytecode_top);
 	if ((*lir_func)->bytecode == NULL) {
 		lir_out_of_memory();
 		return false;
@@ -256,12 +256,12 @@ lir_visit_basic_block(
 	assert(block->type == HIR_BLOCK_BASIC);
 
 	/* Store the block address. */
-	block->addr = bytecode_top;
+	block->addr = (uint32_t)bytecode_top;
 
 	/* Put a line number. */
 	if (!lir_put_opcode(LOP_LINEINFO))
 		return false;
-	if (!lir_put_imm32(block->line))
+	if (!lir_put_imm32((uint32_t)block->line))
 		return false;
 
 	/* Visit statements. */
@@ -280,7 +280,6 @@ static bool
 lir_visit_if_block(
 	struct hir_block *block)
 {
-	struct hir_stmt *stmt;
 	int cond_tmpvar;
 	bool is_else;
 	struct hir_block *b;
@@ -289,12 +288,12 @@ lir_visit_if_block(
 	assert(block->type == HIR_BLOCK_IF);
 
 	/* Store the block address. */
-	block->addr = bytecode_top;
+	block->addr = (uint32_t)bytecode_top;
 
 	/* Put a line number. */
 	if (!lir_put_opcode(LOP_LINEINFO))
 		return false;
-	if (!lir_put_imm32(block->line))
+	if (!lir_put_imm32((uint32_t)block->line))
 		return false;
 
 	/* Is an else-block? */
@@ -312,7 +311,7 @@ lir_visit_if_block(
 			return false;
 		if (!lir_put_opcode(LOP_JMPIFFALSE))
 			return false;
-		if (!lir_put_tmpvar(cond_tmpvar))
+		if (!lir_put_tmpvar((uint16_t)cond_tmpvar))
 			return false;
 		if (block->val.if_.chain != NULL) {
 			/* Jump to a chaining else-block. */
@@ -357,10 +356,6 @@ static bool
 lir_visit_for_block(
 	struct hir_block *block)
 {
-	struct hir_stmt *stmt;
-	int cond_tmpvar;
-	bool is_else;
-
 	assert(block != NULL);
 	assert(block->type == HIR_BLOCK_FOR);
 
@@ -398,12 +393,12 @@ lir_visit_for_range_block(
 	assert(block->val.for_.stop);
 
 	/* Store the block address. */
-	block->addr = bytecode_top;
+	block->addr = (uint32_t)bytecode_top;
 
 	/* Put a line number. */
 	if (!lir_put_opcode(LOP_LINEINFO))
 		return false;
-	if (!lir_put_imm32(block->line))
+	if (!lir_put_imm32((uint32_t)block->line))
 		return false;
 
 	/* Visit the start expr. */
@@ -423,26 +418,26 @@ lir_visit_for_range_block(
 		return false;
 	if (!lir_put_opcode(LOP_ASSIGN))
 		return false;
-	if (!lir_put_tmpvar(loop_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)loop_tmpvar))
 		return false;
-	if (!lir_put_tmpvar(start_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)start_tmpvar))
 		return false;
 
 	/* Put a loop header. */
-	loop_addr = bytecode_top;
+	loop_addr = (uint32_t)bytecode_top;
 	if (!lir_increment_tmpvar(&cmp_tmpvar))
 		return false;
 	if (!lir_put_opcode(LOP_EQI))
 		return false;
-	if (!lir_put_tmpvar(cmp_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)cmp_tmpvar))
 		return false;
-	if (!lir_put_tmpvar(loop_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)loop_tmpvar))
 		return false;
-	if (!lir_put_tmpvar(stop_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)stop_tmpvar))
 		return false;
 	if (!lir_put_opcode(LOP_JMPIFEQ))
 		return false;
-	if (!lir_put_tmpvar(cmp_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)cmp_tmpvar))
 		return false;
 	if (!lir_put_branch_addr(block->succ))
 		return false;
@@ -452,7 +447,7 @@ lir_visit_for_range_block(
 		return false;
 	if (!lir_put_string(block->val.for_.counter_symbol))
 		return false;
-	if (!lir_put_tmpvar(loop_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)loop_tmpvar))
 		return false;
 
 	/* Visit an inner block. */
@@ -468,7 +463,7 @@ lir_visit_for_range_block(
 	/* Increment the loop variable. */
 	if (!lir_put_opcode(LOP_INC))
 		return false;
-	if (!lir_put_tmpvar(loop_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)loop_tmpvar))
 		return false;
 
 	/* Put a back-edge jump. */
@@ -489,10 +484,8 @@ static bool
 lir_visit_for_kv_block(
 	struct hir_block *block)
 {
-	struct hir_stmt *stmt;
 	uint32_t loop_addr;
 	int col_tmpvar, size_tmpvar, i_tmpvar, key_tmpvar, val_tmpvar, cmp_tmpvar;
-	bool is_else;
 	struct hir_block *b;
 
 	assert(block != NULL);
@@ -503,12 +496,12 @@ lir_visit_for_kv_block(
 	assert(block->val.for_.collection != NULL);
 
 	/* Store the block address. */
-	block->addr = bytecode_top;
+	block->addr = (uint32_t)bytecode_top;
 
 	/* Put a line number. */
 	if (!lir_put_opcode(LOP_LINEINFO))
 		return false;
-	if (!lir_put_imm32(block->line))
+	if (!lir_put_imm32((uint32_t)block->line))
 		return false;
 
 	/* Visit a collection expr. */
@@ -522,9 +515,9 @@ lir_visit_for_kv_block(
 		return false;
 	if (!lir_put_opcode(LOP_LEN))
 		return false;
-	if (!lir_put_tmpvar(size_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)size_tmpvar))
 		return false;
-	if (!lir_put_tmpvar(col_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)col_tmpvar))
 		return false;
 
 	/* Assign 0 to `i`. */
@@ -532,7 +525,7 @@ lir_visit_for_kv_block(
 		return false;
 	if (!lir_put_opcode(LOP_ICONST))
 		return false;
-	if (!lir_put_tmpvar(i_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)i_tmpvar))
 		return false;
 	if (!lir_put_imm32(0))
 		return false;
@@ -546,40 +539,40 @@ lir_visit_for_kv_block(
 		return false;
 
 	/* Put a loop header. */
-	loop_addr = bytecode_top;		/* LOOP: */
-	if (!lir_put_opcode(LOP_EQI)) 		/*  if i == size then break */
+	loop_addr = (uint32_t)bytecode_top;		/* LOOP: */
+	if (!lir_put_opcode(LOP_EQI)) 			/*  if i == size then break */
 		return false;
-	if (!lir_put_tmpvar(cmp_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)cmp_tmpvar))
 		return false;
-	if (!lir_put_tmpvar(i_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)i_tmpvar))
 		return false;
-	if (!lir_put_tmpvar(size_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)size_tmpvar))
 		return false;
 	if (!lir_put_opcode(LOP_JMPIFEQ)) 		/*  if i == size then break */
 		return false;
-	if (!lir_put_tmpvar(cmp_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)cmp_tmpvar))
 		return false;
 	if (!lir_put_branch_addr(block->succ))
 		return false;
 	if (!lir_put_opcode(LOP_GETDICTKEYBYINDEX))	/* key = dict.getKeyByIndex(i) */
 		return false;
-	if (!lir_put_tmpvar(key_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)key_tmpvar))
 		return false;
-	if (!lir_put_tmpvar(col_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)col_tmpvar))
 		return false;
-	if (!lir_put_tmpvar(i_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)i_tmpvar))
 		return false;
 	if (!lir_put_opcode(LOP_GETDICTVALBYINDEX)) 	/* val = dict.getValByIndex(i) */
 		return false;
-	if (!lir_put_tmpvar(val_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)val_tmpvar))
 		return false;
-	if (!lir_put_tmpvar(col_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)col_tmpvar))
 		return false;
-	if (!lir_put_tmpvar(i_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)i_tmpvar))
 		return false;
 	if (!lir_put_opcode(LOP_INC)) 		/* i++ */
 		return false;
-	if (!lir_put_tmpvar(i_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)i_tmpvar))
 		return false;
 
 	/* Bind the key and value variables to local variables. */
@@ -587,13 +580,13 @@ lir_visit_for_kv_block(
 		return false;
 	if (!lir_put_string(block->val.for_.key_symbol))
 		return false;
-	if (!lir_put_tmpvar(key_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)key_tmpvar))
 		return false;
 	if (!lir_put_opcode(LOP_STORESYMBOL))
 		return false;
 	if (!lir_put_string(block->val.for_.value_symbol))
 		return false;
-	if (!lir_put_tmpvar(val_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)val_tmpvar))
 		return false;
 
 	/* Visit an inner block. */
@@ -626,10 +619,8 @@ static bool
 lir_visit_for_v_block(
 	struct hir_block *block)
 {
-	struct hir_stmt *stmt;
 	uint32_t loop_addr;
 	int arr_tmpvar, size_tmpvar, i_tmpvar, val_tmpvar, cmp_tmpvar;
-	bool is_else;
 	struct hir_block *b;
 
 	assert(block != NULL);
@@ -639,12 +630,12 @@ lir_visit_for_v_block(
 	assert(block->val.for_.collection != NULL);
 
 	/* Store the block address. */
-	block->addr = bytecode_top;
+	block->addr = (uint32_t)bytecode_top;
 
 	/* Put a line number. */
 	if (!lir_put_opcode(LOP_LINEINFO))
 		return false;
-	if (!lir_put_imm32(block->line))
+	if (!lir_put_imm32((uint32_t)block->line))
 		return false;
 
 	/* Visit an array expr. */
@@ -658,9 +649,9 @@ lir_visit_for_v_block(
 		return false;
 	if (!lir_put_opcode(LOP_LEN))
 		return false;
-	if (!lir_put_tmpvar(size_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)size_tmpvar))
 		return false;
-	if (!lir_put_tmpvar(arr_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)arr_tmpvar))
 		return false;
 
 	/* Assign 0 to `i`. */
@@ -668,7 +659,7 @@ lir_visit_for_v_block(
 		return false;
 	if (!lir_put_opcode(LOP_ICONST))
 		return false;
-	if (!lir_put_tmpvar(i_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)i_tmpvar))
 		return false;
 	if (!lir_put_imm32(0))
 		return false;
@@ -680,32 +671,32 @@ lir_visit_for_v_block(
 		return false;
 
 	/* Put a loop header. */
-	loop_addr = bytecode_top;		/* LOOP: */
-	if (!lir_put_opcode(LOP_EQI)) 		/*  if i == size then break */
+	loop_addr = (uint32_t)bytecode_top;		/* LOOP: */
+	if (!lir_put_opcode(LOP_EQI)) 			/*  if i == size then break */
 		return false;
-	if (!lir_put_tmpvar(cmp_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)cmp_tmpvar))
 		return false;
-	if (!lir_put_tmpvar(i_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)i_tmpvar))
 		return false;
-	if (!lir_put_tmpvar(size_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)size_tmpvar))
 		return false;
 	if (!lir_put_opcode(LOP_JMPIFEQ))
 		return false;
-	if (!lir_put_tmpvar(cmp_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)cmp_tmpvar))
 		return false;
 	if (!lir_put_branch_addr(block->succ))
 		return false;
 	if (!lir_put_opcode(LOP_LOADARRAY)) 	/* val = array[i] */
 		return false;
-	if (!lir_put_tmpvar(val_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)val_tmpvar))
 		return false;
-	if (!lir_put_tmpvar(arr_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)arr_tmpvar))
 		return false;
-	if (!lir_put_tmpvar(i_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)i_tmpvar))
 		return false;
 	if (!lir_put_opcode(LOP_INC)) 		/* i++ */
 		return false;
-	if (!lir_put_tmpvar(i_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)i_tmpvar))
 		return false;
 
 	/* Bind the value variable to a local variable. */
@@ -713,7 +704,7 @@ lir_visit_for_v_block(
 		return false;
 	if (!lir_put_string(block->val.for_.value_symbol))
 		return false;
-	if (!lir_put_tmpvar(val_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)val_tmpvar))
 		return false;
 
 	/* Visit an inner block. */
@@ -753,23 +744,23 @@ lir_visit_while_block(
 	assert(block->type == HIR_BLOCK_WHILE);
 
 	/* Store the block address. */
-	block->addr = bytecode_top;
+	block->addr = (uint32_t)bytecode_top;
 
 	/* Put a line number. */
 	if (!lir_put_opcode(LOP_LINEINFO))
 		return false;
-	if (!lir_put_imm32(block->line))
+	if (!lir_put_imm32((uint32_t)block->line))
 		return false;
 
 	/* Put a loop header. */
-	loop_addr = bytecode_top;
+	loop_addr = (uint32_t)bytecode_top;
 	if (!lir_increment_tmpvar(&cmp_tmpvar))
 		return false;
 	if (!lir_visit_expr(cmp_tmpvar, block->val.while_.cond))
 		return false;
 	if (!lir_put_opcode(LOP_JMPIFFALSE))
 		return false;
-	if (!lir_put_tmpvar(cmp_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)cmp_tmpvar))
 		return false;
 	if (!lir_put_branch_addr(block->succ))
 		return false;
@@ -806,7 +797,7 @@ lir_visit_stmt(
 	/* Put a line number. */
 	if (!lir_put_opcode(LOP_LINEINFO))
 		return false;
-	if (!lir_put_imm32(stmt->line))
+	if (!lir_put_imm32((uint32_t)stmt->line))
 		return false;
 
 	/* Visit RHS. */
@@ -825,7 +816,7 @@ lir_visit_stmt(
 				return false;
 			if (!lir_put_string(stmt->lhs->val.term.term->val.symbol))
 				return false;
-			if (!lir_put_tmpvar(rhs_tmpvar))
+			if (!lir_put_tmpvar((uint16_t)rhs_tmpvar))
 				return false;
 		} else if (stmt->lhs->type == HIR_EXPR_SUBSCR) {
 			assert(stmt->lhs->val.binary.expr[0] != NULL);
@@ -846,11 +837,11 @@ lir_visit_stmt(
 			/* Put a store. */
 			if (!lir_put_opcode(LOP_STOREARRAY))
 				return false;
-			if (!lir_put_tmpvar(obj_tmpvar))
+			if (!lir_put_tmpvar((uint16_t)obj_tmpvar))
 				return false;
-			if (!lir_put_tmpvar(access_tmpvar))
+			if (!lir_put_tmpvar((uint16_t)access_tmpvar))
 				return false;
-			if (!lir_put_tmpvar(rhs_tmpvar))
+			if (!lir_put_tmpvar((uint16_t)rhs_tmpvar))
 				return false;
 
 			lir_decrement_tmpvar(access_tmpvar);
@@ -868,11 +859,11 @@ lir_visit_stmt(
 			/* Put a store. */
 			if (!lir_put_opcode(LOP_STOREDOT))
 				return false;
-			if (!lir_put_tmpvar(obj_tmpvar))
+			if (!lir_put_tmpvar((uint16_t)obj_tmpvar))
 				return false;
 			if (!lir_put_string(stmt->lhs->val.dot.symbol))
 				return false;
-			if (!lir_put_tmpvar(rhs_tmpvar))
+			if (!lir_put_tmpvar((uint16_t)rhs_tmpvar))
 				return false;
 
 			lir_decrement_tmpvar(obj_tmpvar);
@@ -892,8 +883,6 @@ lir_visit_expr(
 	int dst_tmpvar,
 	struct hir_expr *expr)
 {
-	int opr1_tmpvar, opr2_tmpvar;
-
 	assert(expr != NULL);
 
 	switch (expr->type) {
@@ -985,9 +974,9 @@ lir_visit_unary_expr(
 	case HIR_EXPR_NEG:
 		if (!lir_put_opcode(LOP_NEG))
 			return false;
-		if (!lir_put_tmpvar(dst_tmpvar))
+		if (!lir_put_tmpvar((uint16_t)dst_tmpvar))
 			return false;
-		if (!lir_put_tmpvar(opr_tmpvar))
+		if (!lir_put_tmpvar((uint16_t)opr_tmpvar))
 			return false;
 		break;
 	default:
@@ -1071,13 +1060,13 @@ lir_visit_binary_expr(
 		break;
 	}
 
-	if (!lir_put_opcode(opcode))
+	if (!lir_put_opcode((uint8_t)opcode))
 		return false;
-	if (!lir_put_tmpvar(dst_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)dst_tmpvar))
 		return false;
-	if (!lir_put_tmpvar(opr1_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)opr1_tmpvar))
 		return false;
-	if (!lir_put_tmpvar(opr2_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)opr2_tmpvar))
 		return false;
 
 	lir_decrement_tmpvar(opr2_tmpvar);
@@ -1107,9 +1096,9 @@ lir_visit_dot_expr(
 	/* Put a bytecode sequence. */
 	if (!lir_put_opcode(LOP_LOADDOT))
 		return false;
-	if (!lir_put_tmpvar(dst_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)dst_tmpvar))
 		return false;
-	if (!lir_put_tmpvar(opr_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)opr_tmpvar))
 		return false;
 	if (!lir_put_string(expr->val.dot.symbol))
 		return false;
@@ -1154,14 +1143,14 @@ lir_visit_call_expr(
 	/* Put a bytecode sequence. */
 	if (!lir_put_opcode(LOP_CALL))
 		return false;
-	if (!lir_put_tmpvar(dst_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)dst_tmpvar))
 		return false;
-	if (!lir_put_tmpvar(func_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)func_tmpvar))
 		return false;
-	if (!lir_put_imm8(arg_count))
+	if (!lir_put_imm8((uint8_t)arg_count))
 		return false;
 	for (i = 0; i < arg_count; i++) {
-		if (!lir_put_tmpvar(arg_tmpvar[i]))
+		if (!lir_put_tmpvar((uint16_t)arg_tmpvar[i]))
 			return false;
 	}
 
@@ -1207,16 +1196,16 @@ lir_visit_thiscall_expr(
 	/* Put a bytecode sequence. */
 	if (!lir_put_opcode(LOP_THISCALL))
 		return false;
-	if (!lir_put_tmpvar(dst_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)dst_tmpvar))
 		return false;
-	if (!lir_put_tmpvar(obj_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)obj_tmpvar))
 		return false;
 	if (!lir_put_string(expr->val.thiscall.func))
 		return false;
-	if (!lir_put_imm8(arg_count))
+	if (!lir_put_imm8((uint8_t)arg_count))
 		return false;
 	for (i = 0; i < arg_count; i++) {
-		if (!lir_put_tmpvar(arg_tmpvar[i]))
+		if (!lir_put_tmpvar((uint16_t)arg_tmpvar[i]))
 			return false;
 	}
 
@@ -1247,7 +1236,7 @@ lir_visit_array_expr(
 	/* Create an array. */
 	if (!lir_put_opcode(LOP_ACONST))
 		return false;
-	if (!lir_put_tmpvar(dst_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)dst_tmpvar))
 		return false;
 
 	/* Push the elements. */
@@ -1263,17 +1252,17 @@ lir_visit_array_expr(
 		/* Add to the array. */
 		if (!lir_put_opcode(LOP_ICONST))
 			return false;
-		if (!lir_put_tmpvar(index_tmpvar))
+		if (!lir_put_tmpvar((uint16_t)index_tmpvar))
 			return false;
-		if (!lir_put_imm32(i))
+		if (!lir_put_imm32((uint32_t)i))
 			return false;
 		if (!lir_put_opcode(LOP_STOREARRAY))
 			return false;
-		if (!lir_put_tmpvar(dst_tmpvar))
+		if (!lir_put_tmpvar((uint16_t)dst_tmpvar))
 			return false;
-		if (!lir_put_tmpvar(index_tmpvar))
+		if (!lir_put_tmpvar((uint16_t)index_tmpvar))
 			return false;
-		if (!lir_put_tmpvar(elem_tmpvar))
+		if (!lir_put_tmpvar((uint16_t)elem_tmpvar))
 			return false;
 	}
 
@@ -1304,7 +1293,7 @@ lir_visit_dict_expr(
 	/* Create a dictionary. */
 	if (!lir_put_opcode(LOP_DCONST))
 		return false;
-	if (!lir_put_tmpvar(dst_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)dst_tmpvar))
 		return false;
 
 	/* Push the elements. */
@@ -1322,17 +1311,17 @@ lir_visit_dict_expr(
 		/* Add to the dict. */
 		if (!lir_put_opcode(LOP_SCONST))
 			return false;
-		if (!lir_put_tmpvar(key_tmpvar))
+		if (!lir_put_tmpvar((uint16_t)key_tmpvar))
 			return false;
 		if (!lir_put_string(expr->val.dict.key[i]))
 			return false;
 		if (!lir_put_opcode(LOP_STOREARRAY))
 			return false;
-		if (!lir_put_tmpvar(dst_tmpvar))
+		if (!lir_put_tmpvar((uint16_t)dst_tmpvar))
 			return false;
-		if (!lir_put_tmpvar(key_tmpvar))
+		if (!lir_put_tmpvar((uint16_t)key_tmpvar))
 			return false;
-		if (!lir_put_tmpvar(value_tmpvar))
+		if (!lir_put_tmpvar((uint16_t)value_tmpvar))
 			return false;
 	}
 
@@ -1393,7 +1382,7 @@ lir_visit_symbol_term(
 
 	if (!lir_put_opcode(LOP_LOADSYMBOL))
 		return false;
-	if (!lir_put_tmpvar(dst_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)dst_tmpvar))
 		return false;
 	if (!lir_put_string(term->val.symbol))
 		return false;
@@ -1411,9 +1400,9 @@ lir_visit_int_term(
 
 	if (!lir_put_opcode(LOP_ICONST))
 		return false;
-	if (!lir_put_tmpvar(dst_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)dst_tmpvar))
 		return false;
-	if (!lir_put_imm32(term->val.i))
+	if (!lir_put_imm32((uint32_t)term->val.i))
 		return false;
 
 	return true;
@@ -1433,7 +1422,7 @@ lir_visit_float_term(
 
 	if (!lir_put_opcode(LOP_FCONST))
 		return false;
-	if (!lir_put_tmpvar(dst_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)dst_tmpvar))
 		return false;
 	if (!lir_put_imm32(data))
 		return false;
@@ -1451,7 +1440,7 @@ lir_visit_string_term(
 
 	if (!lir_put_opcode(LOP_SCONST))
 		return false;
-	if (!lir_put_tmpvar(dst_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)dst_tmpvar))
 		return false;
 	if (!lir_put_string(term->val.s))
 		return false;
@@ -1469,7 +1458,7 @@ lir_visit_empty_array_term(
 
 	if (!lir_put_opcode(LOP_ACONST))
 		return false;
-	if (!lir_put_tmpvar(dst_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)dst_tmpvar))
 		return false;
 
 	return true;
@@ -1485,7 +1474,7 @@ lir_visit_empty_dict_term(
 
 	if (!lir_put_opcode(LOP_DCONST))
 		return false;
-	if (!lir_put_tmpvar(dst_tmpvar))
+	if (!lir_put_tmpvar((uint16_t)dst_tmpvar))
 		return false;
 
 	return true;
@@ -1570,7 +1559,7 @@ static bool lir_put_branch_addr(
 		return false;
 	}
 
-	loc_tbl[loc_count].offset = bytecode_top;
+	loc_tbl[loc_count].offset = (uint32_t)bytecode_top;
 	loc_tbl[loc_count].block = block;
 	loc_count++;
 
@@ -1587,11 +1576,11 @@ static bool
 lir_put_string(
 	const char *s)
 {
-	int i, len;
+	size_t i, len;
 
 	len = strlen(s);
 	for (i = 0; i < len; i++) {
-		if (!lir_put_u8(*s++))
+		if (!lir_put_u8((uint8_t)*s++))
 			return false;
 	}
 	if (!lir_put_u8('\0'))
@@ -1735,10 +1724,51 @@ lir_out_of_memory(void)
  * Dump
  */
 
-#define IMM1(d)		{ d = (*pc); pc += 1; }
-#define IMM2(d)		{ d = ((*pc) << 8) | *(pc + 1); pc += 2; }
-#define IMM4(d)		{ d = ((*pc) << 24) | ((*(pc + 1)) << 16) | ((*(pc + 2)) << 8) | *(pc + 3); pc += 4; }
-#define IMMS(d)		{ d = (const char *)pc; pc += strlen((const char *)pc) + 1; }
+#define IMM1(d) imm1(&pc, &d)
+static INLINE void imm1(uint8_t **pc, uint8_t *ret)
+{
+	*ret = **pc;
+	(*pc) += 1;
+}
+
+#define IMM2(d) imm2(&pc, &d)
+static INLINE void imm2(uint8_t **pc, uint16_t *ret)
+{
+	uint32_t b0;
+	uint32_t b1;
+
+	b0 = **pc;
+	b1 = *((*pc) + 1);
+	
+	*ret = (uint16_t)((b0 << 8) | (b1));
+
+	(*pc) += 2;
+}
+
+#define IMM4(d) imm4(&pc, &d)
+static INLINE void imm4(uint8_t **pc, uint32_t *ret)
+{
+	uint32_t b0;
+	uint32_t b1;
+	uint32_t b2;
+	uint32_t b3;
+
+	b0 = **pc;
+	b1 = *((*pc) + 1);
+	b2 = *((*pc) + 2);
+	b3 = *((*pc) + 3);
+
+	*ret = (uint32_t)((b0 << 24) | (b1 << 16) | (b2 << 8) | (b3 + 3));
+
+	(*pc) += 4;
+}
+
+#define IMMS(d) imms(&pc, &d)
+static INLINE void imms(uint8_t **pc, const char **ret)
+{
+	*ret = (const char *)*pc;
+	(*pc) += strlen((const char *)*pc) + 1;
+}
 
 void
 lir_dump(
@@ -1753,12 +1783,12 @@ lir_dump(
 	while (pc < end) {
 		int opcode;
 		int ofs;
-		ofs = pc - func->bytecode;
+		ofs = (int)(ptrdiff_t)(pc - func->bytecode);
 		opcode = *pc++;
 		switch (opcode) {
 		case LOP_LINEINFO:
 		{
-			int line;
+			uint32_t line;
 			IMM4(line);
 			printf("%04d: LINEINFO(line:%d)\n", ofs, line);
 			break;
@@ -1768,8 +1798,8 @@ lir_dump(
 			break;
 		case LOP_ASSIGN:
 		{
-			int dst;
-			int src;
+			uint16_t dst;
+			uint16_t src;
 			IMM2(dst);
 			IMM2(src);
 			printf("%04d: ASSIGN(dst:%d, src:%d)\n", ofs, dst, src);
@@ -1777,7 +1807,7 @@ lir_dump(
 		}
 		case LOP_ICONST:
 		{
-			int dst;
+			uint16_t dst;
 			uint32_t val;
 			IMM2(dst);
 			IMM4(val);
@@ -1786,7 +1816,7 @@ lir_dump(
 		}
 		case LOP_FCONST:
 		{
-			int dst;
+			uint16_t dst;
 			uint32_t val;
 			float val_f;
 			IMM2(dst);
@@ -1797,7 +1827,7 @@ lir_dump(
 		}
 		case LOP_SCONST:
 		{
-			int dst;
+			uint16_t dst;
 			const char *val;
 			IMM2(dst);
 			IMMS(val);
@@ -1806,21 +1836,21 @@ lir_dump(
 		}
 		case LOP_ACONST:
 		{
-			int dst;
+			uint16_t dst;
 			IMM2(dst);
 			printf("%04d: ACONST(dst:%d)\n", ofs, dst);
 			break;
 		}
 		case LOP_DCONST:
 		{
-			int dst;
+			uint16_t dst;
 			IMM2(dst);
 			printf("%04d: DCONST(dst:%d)\n", ofs, dst);
 			break;
 		}
 		case LOP_INC:
 		{
-			int dst;
+			uint16_t dst;
 			IMM2(dst);
 			printf("%04d: INC(dst:%d)\n", ofs, dst);
 			break;
@@ -1828,9 +1858,9 @@ lir_dump(
 		//case LOP_NEG:
 		case LOP_ADD:
 		{
-			int dst;
-			int src1;
-			int src2;
+			uint16_t dst;
+			uint16_t src1;
+			uint16_t src2;
 			IMM2(dst);
 			IMM2(src1);
 			IMM2(src2);
@@ -1849,9 +1879,9 @@ lir_dump(
 		//case LOP_GT:
 		case LOP_GTE:
 		{
-			int dst;
-			int src1;
-			int src2;
+			uint16_t dst;
+			uint16_t src1;
+			uint16_t src2;
 			IMM2(dst);
 			IMM2(src1);
 			IMM2(src2);
@@ -1860,9 +1890,9 @@ lir_dump(
 		}
 		case LOP_EQ:
 		{
-			int dst;
-			int src1;
-			int src2;
+			uint16_t dst;
+			uint16_t src1;
+			uint16_t src2;
 			IMM2(dst);
 			IMM2(src1);
 			IMM2(src2);
@@ -1871,9 +1901,9 @@ lir_dump(
 		}
 		case LOP_EQI:
 		{
-			int dst;
-			int src1;
-			int src2;
+			uint16_t dst;
+			uint16_t src1;
+			uint16_t src2;
 			IMM2(dst);
 			IMM2(src1);
 			IMM2(src2);
@@ -1883,9 +1913,9 @@ lir_dump(
 		//case LOP_NEQ:
 		case LOP_LOADARRAY:
 		{
-			int dst;
-			int src1;
-			int src2;
+			uint16_t dst;
+			uint16_t src1;
+			uint16_t src2;
 			IMM2(dst);
 			IMM2(src1);
 			IMM2(src2);
@@ -1894,9 +1924,9 @@ lir_dump(
 		}
 		case LOP_STOREARRAY:
 		{
-			int dst;
-			int src1;
-			int src2;
+			uint16_t dst;
+			uint16_t src1;
+			uint16_t src2;
 			IMM2(dst);
 			IMM2(src1);
 			IMM2(src2);
@@ -1905,8 +1935,8 @@ lir_dump(
 		}
 		case LOP_LEN:
 		{
-			int dst;
-			int src;
+			uint16_t dst;
+			uint16_t src;
 			IMM2(dst);
 			IMM2(src);
 			printf("%04d: LEN(dst:%d, src:%d)\n", ofs, dst, src);
@@ -1914,9 +1944,9 @@ lir_dump(
 		}
 		case LOP_GETDICTKEYBYINDEX:
 		{
-			int dst;
-			int dict;
-			int index;
+			uint16_t dst;
+			uint16_t dict;
+			uint16_t index;
 			IMM2(dst);
 			IMM2(dict);
 			IMM2(index);
@@ -1925,9 +1955,9 @@ lir_dump(
 		}
 		case LOP_GETDICTVALBYINDEX:
 		{
-			int dst;
-			int dict;
-			int index;
+			uint16_t dst;
+			uint16_t dict;
+			uint16_t index;
 			IMM2(dst);
 			IMM2(dict);
 			IMM2(index);
@@ -1939,7 +1969,7 @@ lir_dump(
 		case LOP_STORESYMBOL:
 		{
 			const char *symbol;
-			int src;
+			uint16_t src;
 			IMMS(symbol);
 			IMM2(src);
 			printf("%04d: STORESYMBOL(symbol:%s, src:%d)\n", ofs, symbol, src);
@@ -1947,7 +1977,7 @@ lir_dump(
 		}
 		case LOP_LOADSYMBOL:
 		{
-			int dst;
+			uint16_t dst;
 			const char *symbol;
 			IMM2(dst);
 			IMMS(symbol);
@@ -1956,10 +1986,10 @@ lir_dump(
 		}
 		case LOP_CALL:
 		{
-			int dst;
-			int func;
-			int arg_count;
-			int arg;
+			uint16_t dst;
+			uint16_t func;
+			uint8_t arg_count;
+			uint16_t arg;
 			int i;
 			IMM2(dst);
 			IMM2(func);
@@ -1975,15 +2005,15 @@ lir_dump(
 		//case LOP_THISCALL:
 		case LOP_JMP:
 		{
-			int target;
+			uint32_t target;
 			IMM4(target);
 			printf("%04d: JMP(target:%d)\n", ofs, target);
 			break;
 		}
 		case LOP_JMPIFTRUE:
 		{
-			int src;
-			int target;
+			uint16_t src;
+			uint32_t target;
 			IMM2(src);
 			IMM4(target);
 			printf("%04d: JMPIFTRUE(src:%d, target:%d)\n", ofs, src, target);
@@ -1991,8 +2021,8 @@ lir_dump(
 		}
 		case LOP_JMPIFFALSE:
 		{
-			int src;
-			int target;
+			uint16_t src;
+			uint32_t target;
 			IMM2(src);
 			IMM4(target);
 			printf("%04d: JMPIFFALSE(src:%d, target:%d)\n", ofs, src, target);
@@ -2000,8 +2030,8 @@ lir_dump(
 		}
 		case LOP_JMPIFEQ:
 		{
-			int src;
-			int target;
+			uint16_t src;
+			uint32_t target;
 			IMM2(src);
 			IMM4(target);
 			printf("%04d: JMPIFEQ(src:%d, target:%d)\n", ofs, src, target);

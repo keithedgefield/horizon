@@ -53,7 +53,6 @@ struct hir_block *hir_func_tbl[HIR_FUNC_MAX];
  */
 
 static int hir_error_line;
-static int hir_error_col;
 static char hir_error_message[65536];
 
 /*
@@ -74,7 +73,6 @@ static struct ast_stmt_list *hir_anon_func_stmt_list[ANON_FUNC_SIZE];
 
 /* Forward Declaration */
 static bool hir_visit_func(struct ast_func *afunc);
-static bool hir_parse_param_list(struct ast_func *afunc, struct hir_block *hfunc);
 static bool hir_visit_stmt_list(struct hir_block **cur_block, struct hir_block **prev_block, struct hir_block *parent_block, struct ast_stmt_list *stmt_list);
 static bool hir_visit_stmt(struct hir_block **cur_block, struct hir_block **prev_block, struct hir_block *parent_block, struct ast_stmt *cur_astmt);
 static bool hir_visit_expr_stmt(struct hir_block **cur_block, struct hir_block **prev_block, struct hir_block *parent_block, struct ast_stmt *cur_astmt);
@@ -204,8 +202,6 @@ hir_visit_func(
 	struct hir_block *end_block;
 	struct hir_block *cur_block;
 	struct hir_block *prev_block;
-	struct ast_stmt *cur_astmt;
-	struct ast_stmt *prev_astmt;
 
 	/* Check maximum functions. */
 	if (hir_func_count >= HIR_FUNC_MAX) {
@@ -304,10 +300,8 @@ hir_visit_stmt_list(
 	struct hir_block *parent_block,
 	struct ast_stmt_list *stmt_list)
 {
-	struct hir_block *last_cur_block;
 	struct hir_block *p_search;
 	struct ast_stmt *cur_astmt;
-	struct ast_stmt *prev_astmt;
 	bool is_control;
 
 	assert(cur_block != NULL);
@@ -323,7 +317,6 @@ hir_visit_stmt_list(
 	is_control = false;
 	if (stmt_list != NULL) {
 		cur_astmt = stmt_list->list;
-		prev_astmt = NULL;
 		while (cur_astmt != NULL) {
 			/* Break if the astmt is a loop-control statement. */
 			if (cur_astmt->type == AST_STMT_CONTINUE ||
@@ -333,7 +326,6 @@ hir_visit_stmt_list(
 			}
 
 			/* Visit a stmt. */
-			last_cur_block = *cur_block;
 			if (!hir_visit_stmt(cur_block, prev_block, parent_block, cur_astmt))
 				return false;
 
@@ -343,7 +335,6 @@ hir_visit_stmt_list(
 				break;
 			}
 
-			prev_astmt = cur_astmt;
 			cur_astmt = cur_astmt->next;
 		}
 	}
@@ -652,7 +643,6 @@ hir_visit_if_stmt(
 	struct hir_block *exit_block;
 	struct hir_block *inner_cur_block;
 	struct hir_block *inner_prev_block;
-	struct hir_expr *cond;
 
 	assert(cur_block != NULL);
 	assert(*cur_block != NULL);
@@ -739,7 +729,6 @@ hir_visit_elif_stmt(
 	struct hir_block *exit_block;
 	struct hir_block *inner_cur_block;
 	struct hir_block *inner_prev_block;
-	struct hir_expr *cond;
 
 	assert(cur_block != NULL);
 	assert(*cur_block != NULL);
@@ -826,7 +815,6 @@ hir_visit_else_stmt(
 	struct hir_block *exit_block;
 	struct hir_block *inner_cur_block;
 	struct hir_block *inner_prev_block;
-	struct hir_expr *cond;
 
 	assert(cur_block != NULL);
 	assert(*cur_block != NULL);
@@ -908,7 +896,6 @@ hir_visit_while_stmt(
 	struct hir_block *exit_block;
 	struct hir_block *inner_cur_block;
 	struct hir_block *inner_prev_block;
-	struct hir_expr *cond;
 
 	assert(cur_block != NULL);
 	assert(*cur_block != NULL);
@@ -996,8 +983,6 @@ hir_visit_for_stmt(
 	struct hir_block *exit_block;
 	struct hir_block *inner_cur_block;
 	struct hir_block *inner_prev_block;
-	struct hir_expr *start_expr;
-	struct hir_expr *stop_expr;
 
 	assert(cur_block != NULL);
 	assert(*cur_block != NULL);
@@ -1633,7 +1618,6 @@ hir_visit_func_expr(
 {
 	struct hir_expr *e;
 	struct hir_term *t;
-	int index;
 
 	assert(hexpr != NULL);
 	assert(*hexpr == NULL);
@@ -1702,7 +1686,7 @@ hir_visit_term(
 		break;
 	case AST_TERM_FLOAT:
 		t->type = HIR_TERM_FLOAT;
-		t->val.f = aterm->val.f;
+		t->val.f = (float)aterm->val.f;
 		break;
 	case AST_TERM_STRING:
 		t->type = HIR_TERM_STRING;
@@ -1797,7 +1781,6 @@ hir_free_block(
 	struct hir_block *b)
 {
 	int i;
-	bool is_loop_end;
 
 	switch (b->type) {
 	case HIR_BLOCK_FUNC:

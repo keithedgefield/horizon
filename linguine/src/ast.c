@@ -67,7 +67,6 @@ static void ast_free_expr(struct ast_expr *expr);
 static void ast_free_kv_list(struct ast_kv_list *kv_list);
 static void ast_free_kv(struct ast_kv *kv);
 static void ast_free_term(struct ast_term *term);
-static int ast_count_param_list(struct ast_param_list *param_list);
 static void ast_out_of_memory(void);
 
 /*
@@ -78,7 +77,6 @@ ast_build(
 	const char *file_name,
 	const char *text)
 {
-	uint8_t *bc;
 	yyscan_t scanner;
 
 	assert(file_name != NULL);
@@ -202,7 +200,7 @@ ast_accept_param_list(
 	struct ast_param_list *param_list,
 	char *name)
 {
-	struct ast_param *param, *p;
+	struct ast_param *param;
 
 	assert(name != NULL);
 
@@ -238,8 +236,6 @@ ast_accept_stmt_list(
 	struct ast_stmt_list *stmt_list,
 	struct ast_stmt *stmt)
 {
-	struct ctl_front_stmt *s;
-
 	assert(stmt != NULL);
 
 	if (stmt_list == NULL) {
@@ -1155,8 +1151,6 @@ ast_accept_arg_list(
 	struct ast_arg_list *arg_list,
 	struct ast_expr *expr)
 {
-	struct ast_expr *e;
-
 	assert(expr != NULL);
 	assert(expr->next == NULL);
 
@@ -1412,8 +1406,37 @@ ast_free_expr(
 			expr->val.dot.symbol = NULL;
 		}
 		break;
-	deafult:
-		assert(NEVER_COME_HERE);
+	case AST_EXPR_CALL:
+		if (expr->val.call.func != NULL) {
+			ast_free_expr(expr->val.call.func);
+			expr->val.call.func = NULL;
+		}
+		if (expr->val.call.arg_list != NULL) {
+			ast_free_arg_list(expr->val.call.arg_list);
+			expr->val.call.arg_list = NULL;
+		}
+		break;
+	case AST_EXPR_ARRAY:
+		if (expr->val.array.elem_list != NULL) {
+			ast_free_arg_list(expr->val.array.elem_list);
+			expr->val.call.func = NULL;
+		}
+		break;
+	case AST_EXPR_DICT:
+		if (expr->val.dict.kv_list != NULL) {
+			ast_free_kv_list(expr->val.dict.kv_list);
+			expr->val.dict.kv_list = NULL;
+		}
+		break;
+	case AST_EXPR_FUNC:
+		if (expr->val.func.param_list != NULL) {
+			ast_free_param(expr->val.func.param_list->list);
+			expr->val.func.param_list = NULL;
+		}
+		if (expr->val.func.stmt_list != NULL) {
+			ast_free_stmt_list(expr->val.func.stmt_list);
+			expr->val.func.stmt_list = NULL;
+		}
 		break;
 	}
 

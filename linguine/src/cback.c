@@ -152,18 +152,20 @@ cback_visit_bytecode(
 		printf(BROKEN_BYTECODE);					\
 		return false;							\
 	}									\
-	dst = (func->bytecode[*pc + 1] << 8) | func->bytecode[*pc + 2];		\
-	if (dst >= func->tmpvar_size) {						\
+	dst = ((uint32_t)func->bytecode[*pc + 1] << 8) |			\
+		(uint32_t)func->bytecode[*pc + 2];				\
+	if (dst >= (uint32_t)func->tmpvar_size) {				\
 		printf(BROKEN_BYTECODE);					\
 		return false;							\
 	}									\
-	src = (func->bytecode[*pc + 3] << 8) | func->bytecode[*pc + 4];		\
-	if (src >= func->tmpvar_size) {						\
+	src = ((uint32_t)func->bytecode[*pc + 3] << 8) | 			\
+		(uint32_t)func->bytecode[*pc + 4];				\
+	if (src >= (uint32_t)func->tmpvar_size) {				\
 		printf(BROKEN_BYTECODE);					\
 		return false;							\
 	}									\
 	*pc += 1 + 2 + 2;							\
-	fprintf(fp, "if (!" #helper "(rt, dst, src))");				\
+	fprintf(fp, "if (!" #helper "(rt, (int)dst, (int)src))");		\
 	fprintf(fp, "    return false;\n");
 
 #define BINARY_OP(helper)							\
@@ -175,23 +177,26 @@ cback_visit_bytecode(
 		printf(BROKEN_BYTECODE);					\
 		return false;							\
 	}									\
-	dst = (func->bytecode[*pc + 1] << 8) | func->bytecode[*pc + 2];		\
-	if (dst >= func->tmpvar_size) {						\
+	dst = ((uint32_t)func->bytecode[*pc + 1] << 8) | 			\
+		(uint32_t)func->bytecode[*pc + 2];				\
+	if (dst >= (uint32_t)func->tmpvar_size) {				\
 		printf(BROKEN_BYTECODE);					\
 		return false;							\
 	}									\
-	src1 = (func->bytecode[*pc + 3] << 8) | func->bytecode[*pc + 4];	\
-	if (src1 >= func->tmpvar_size) {					\
+	src1 = ((uint32_t)func->bytecode[*pc + 3] << 8) |			\
+		(uint32_t)func->bytecode[*pc + 4];				\
+	if (src1 >= (uint32_t)func->tmpvar_size) {				\
 		printf(BROKEN_BYTECODE);					\
 		return false;							\
 	}									\
-	src2 = (func->bytecode[*pc + 5] << 8) | func->bytecode[*pc + 6];	\
-	if (src2 >= func->tmpvar_size) {					\
+	src2 = ((uint32_t)func->bytecode[*pc + 5] << 8) | 			\
+		(uint32_t)func->bytecode[*pc + 6];				\
+	if (src2 >= (uint32_t)func->tmpvar_size) {				\
 		printf(BROKEN_BYTECODE);					\
 		return false;							\
 	}									\
 	*pc += 1 + 2 + 2 + 2;							\
-	fprintf(fp, "if (!" #helper "(rt, dst, src1, src2))");			\
+	fprintf(fp, "if (!" #helper "(rt, (int)dst, (int)src1, (int)src2))");	\
 	fprintf(fp, "    return false;\n");
 
 /* Visit a LOP_LINEINFO instruction. */
@@ -234,14 +239,16 @@ cback_visit_assign_op(
 		return false;
 	}
 
-	dst = (func->bytecode[*pc + 1] << 8) | func->bytecode[*pc + 2];
-	if (dst >= func->tmpvar_size) {
+	dst = ((uint32_t)func->bytecode[*pc + 1] << 8) |
+		(uint32_t)func->bytecode[*pc + 2];
+	if (dst >= (uint32_t)func->tmpvar_size) {
 		printf(BROKEN_BYTECODE);
 		return false;
 	}
 
-	src = (func->bytecode[*pc + 1] << 8) | func->bytecode[*pc + 2];
-	if (src >= func->tmpvar_size) {
+	src = ((uint32_t)func->bytecode[*pc + 1] << 8) |
+		(uint32_t)func->bytecode[*pc + 2];
+	if (src >= (uint32_t)func->tmpvar_size) {
 		printf(BROKEN_BYTECODE);
 		return false;
 	}
@@ -267,16 +274,17 @@ cback_visit_iconst_op(
 		return false;
 	}
 
-	dst = (func->bytecode[*pc + 1] << 8) | func->bytecode[*pc + 2];
-	if (dst >= func->tmpvar_size) {
+	dst = ((uint32_t)func->bytecode[*pc + 1] << 8) |
+		(uint32_t)func->bytecode[*pc + 2];
+	if (dst >= (uint32_t)func->tmpvar_size) {
 		printf(BROKEN_BYTECODE);
 		return false;
 	}
 
-	val = (func->bytecode[*pc + 3] << 24) |
-	       (func->bytecode[*pc + 4] << 16) |
-	       (func->bytecode[*pc + 5] << 8) |
-		func->bytecode[*pc + 6];
+	val = ((uint32_t)func->bytecode[*pc + 3] << 24) |
+		(uint32_t)(func->bytecode[*pc + 4] << 16) |
+		(uint32_t)(func->bytecode[*pc + 5] << 8) |
+		(uint32_t)func->bytecode[*pc + 6];
 
 	*pc += 1 + 2 + 4;
 
@@ -303,16 +311,17 @@ cback_visit_fconst_op(
 		return false;
 	}
 
-	dst = (func->bytecode[*pc + 1] << 8) | func->bytecode[*pc + 2];
-	if (dst >= func->tmpvar_size) {
+	dst = ((uint32_t)func->bytecode[*pc + 1] << 8) |
+		(uint32_t)func->bytecode[*pc + 2];
+	if (dst >= (uint32_t)func->tmpvar_size) {
 		printf(BROKEN_BYTECODE);
 		return false;
 	}
 
-	raw = (func->bytecode[*pc + 3] << 24) |
-	       (func->bytecode[*pc + 4] << 16) |
-	       (func->bytecode[*pc + 5] << 8) |
-		func->bytecode[*pc + 6];
+	raw = ((uint32_t)func->bytecode[*pc + 3] << 24) |
+		((uint32_t)func->bytecode[*pc + 4] << 16) |
+		((uint32_t)func->bytecode[*pc + 5] << 8) |
+		(uint32_t)func->bytecode[*pc + 6];
 
 	val = *(float *)&raw;
 
@@ -341,14 +350,15 @@ cback_visit_sconst_op(
 		return false;
 	}
 
-	dst = (func->bytecode[*pc + 1] << 8) | func->bytecode[*pc + 2];
-	if (dst >= func->tmpvar_size) {
+	dst = ((uint32_t)func->bytecode[*pc + 1] << 8) | (uint32_t)
+		(uint32_t)func->bytecode[*pc + 2];
+	if (dst >= (uint32_t)func->tmpvar_size) {
 		printf(BROKEN_BYTECODE);
 		return false;
 	}
 
 	s = (const char *)&func->bytecode[*pc + 3];
-	len = strlen(s);
+	len = (int)strlen(s);
 	if (*pc + 1 + 2 + len + 1 > func->bytecode_size) {
 		printf(BROKEN_BYTECODE);
 		return false;
@@ -377,8 +387,9 @@ cback_visit_aconst_op(
 		return false;
 	}
 
-	dst = (func->bytecode[*pc + 1] << 8) | func->bytecode[*pc + 2];
-	if (dst >= func->tmpvar_size) {
+	dst = ((uint32_t)func->bytecode[*pc + 1] << 8) |
+		(uint32_t)func->bytecode[*pc + 2];
+	if (dst >= (uint32_t)func->tmpvar_size) {
 		printf(BROKEN_BYTECODE);
 		return false;
 	}
@@ -406,8 +417,9 @@ cback_visit_dconst_op(
 		return false;
 	}
 
-	dst = (func->bytecode[*pc + 1] << 8) | func->bytecode[*pc + 2];
-	if (dst >= func->tmpvar_size) {
+	dst = ((uint32_t)func->bytecode[*pc + 1] << 8) |
+		(uint32_t)func->bytecode[*pc + 2];
+	if (dst >= (uint32_t)func->tmpvar_size) {
 		printf(BROKEN_BYTECODE);
 		return false;
 	}
@@ -426,7 +438,6 @@ cback_visit_inc_op(
 	struct lir_func *func,
 	int *pc)
 {
-	struct rt_value *val;
 	uint32_t dst;
 
 	LABEL(*pc);
@@ -436,8 +447,9 @@ cback_visit_inc_op(
 		return false;
 	}
 
-	dst = (func->bytecode[*pc + 1] << 8) | func->bytecode[*pc + 2];
-	if (dst >= func->tmpvar_size) {
+	dst = ((uint32_t)func->bytecode[*pc + 1] << 8) |
+		(uint32_t)func->bytecode[*pc + 2];
+	if (dst >= (uint32_t)func->tmpvar_size) {
 		printf(BROKEN_BYTECODE);
 		return false;
 	}
@@ -689,7 +701,7 @@ cback_visit_loadsymbol_op(
 	dst = (func->bytecode[*pc + 1] << 8) | (func->bytecode[*pc + 2]);
 
 	symbol = (const char *)&func->bytecode[*pc + 3];
-	len = strlen(symbol);
+	len = (int)strlen(symbol);
 	if (*pc + 2 + len + 1 > func->bytecode_size) {
 		printf(BROKEN_BYTECODE);
 		return false;
@@ -716,14 +728,14 @@ cback_visit_storesymbol_op(
 	LABEL(*pc);
 
 	symbol = (const char *)&func->bytecode[*pc + 1];
-	len = strlen(symbol);
+	len = (int)strlen(symbol);
 	if (*pc + 1 + len + 1 + 2 > func->bytecode_size) {
 		printf(BROKEN_BYTECODE);
 		return false;
 	}
 
-	src = (func->bytecode[*pc + 1 + len + 1] << 8) |
-	      (func->bytecode[*pc + 1 + len + 1 + 1]);
+	src = ((uint32_t)func->bytecode[*pc + 1 + len + 1] << 8) |
+		(uint32_t)(func->bytecode[*pc + 1 + len + 1 + 1]);
 
 	*pc += 1 + len + 1 + 2;
 
@@ -751,20 +763,22 @@ cback_visit_loaddot_op(
 		return false;
 	}
 
-	dst = (func->bytecode[*pc + 1] << 8) | (func->bytecode[*pc + 2]);
-	if (dst >= func->tmpvar_size) {
+	dst = ((uint32_t)func->bytecode[*pc + 1] << 8) |
+		(uint32_t)(func->bytecode[*pc + 2]);
+	if (dst >= (uint32_t)func->tmpvar_size) {
 		printf(BROKEN_BYTECODE);
 		return false;
 	}
 
-	dict = (func->bytecode[*pc + 3] << 8) | (func->bytecode[*pc + 4]);
-	if (dict >= func->tmpvar_size) {
+	dict = ((uint32_t)func->bytecode[*pc + 3] << 8) |
+		(uint32_t)(func->bytecode[*pc + 4]);
+	if (dict >= (uint32_t)func->tmpvar_size) {
 		printf(BROKEN_BYTECODE);
 		return false;
 	}
 
 	field = (const char *)&func->bytecode[*pc + 5];
-	len = strlen(field);
+	len = (int)strlen(field);
 	if (*pc + 1 + 2  + 2 + len + 1 > func->bytecode_size) {
 		printf(BROKEN_BYTECODE);
 		return false;
@@ -796,23 +810,23 @@ cback_visit_storedot_op(
 		return false;
 	}
 
-	dict = (func->bytecode[*pc + 1] << 8) |
-		(func->bytecode[*pc + 2]);
-	if (dict >= func->tmpvar_size) {
+	dict = ((uint32_t)func->bytecode[*pc + 1] << 8) |
+		(uint32_t)(func->bytecode[*pc + 2]);
+	if (dict >= (uint32_t)func->tmpvar_size) {
 		printf(BROKEN_BYTECODE);
 		return false;
 	}
 
 	field = (const char *)&func->bytecode[*pc + 3];
-	len = strlen(field);
+	len = (int)strlen(field);
 	if (*pc + 1 + 2  + 2 + len + 1 > func->bytecode_size) {
 		printf(BROKEN_BYTECODE);
 		return false;
 	}
 
-	src = (func->bytecode[*pc + 1 + 2 + len + 1] << 8) |
-		(func->bytecode[*pc + 1 + 2 + len + 1 + 1]);
-	if (src >= func->tmpvar_size) {
+	src = ((uint32_t)func->bytecode[*pc + 1 + 2 + len + 1] << 8) |
+	       ((uint32_t)func->bytecode[*pc + 1 + 2 + len + 1 + 1]);
+	if (src >= (uint32_t)func->tmpvar_size) {
 		printf(BROKEN_BYTECODE);
 		return false;
 	}
@@ -908,7 +922,7 @@ cback_visit_thiscall_op(
 	}
 
 	name = (const char *)&func->bytecode[*pc + 5];
-	len = strlen(name);
+	len = (int)strlen(name);
 	if (*pc + 1 + 2 + 2 + len + 1 + 1 > func->bytecode_size) {
 		printf(BROKEN_BYTECODE);
 		return false;
@@ -950,11 +964,11 @@ cback_visit_jmp_op(
 		return false;
 	}
 
-	target = (func->bytecode[*pc + 1] << 24) |
-		(func->bytecode[*pc + 2] << 16) |
-		(func->bytecode[*pc + 3] << 8) |
-		func->bytecode[*pc + 4];
-	if (target > func->bytecode_size + 1) {
+	target = ((uint32_t)func->bytecode[*pc + 1] << 24) |
+		((uint32_t)func->bytecode[*pc + 2] << 16) |
+		((uint32_t)func->bytecode[*pc + 3] << 8) |
+		(uint32_t)func->bytecode[*pc + 4];
+	if (target > (uint32_t)func->bytecode_size + 1) {
 		printf(BROKEN_BYTECODE);
 		return false;
 	}
@@ -982,18 +996,18 @@ cback_visit_jmpiftrue_op(
 		return false;
 	}
 
-	src = (func->bytecode[*pc + 1] << 8) |
-		func->bytecode[*pc + 2];
-	if (src >= func->tmpvar_size) {
+	src = ((uint32_t)func->bytecode[*pc + 1] << 8) |
+		(uint32_t)func->bytecode[*pc + 2];
+	if (src >= (uint32_t)func->tmpvar_size) {
 		printf(BROKEN_BYTECODE);
 		return false;
 	}
 
-	target = (func->bytecode[*pc + 3] << 24) |
-		(func->bytecode[*pc + 4] << 16) |
-		(func->bytecode[*pc + 5] << 8) |
-		func->bytecode[*pc + 6];
-	if (target > func->bytecode_size + 1) {
+	target = ((uint32_t)func->bytecode[*pc + 3] << 24) |
+		((uint32_t)func->bytecode[*pc + 4] << 16) |
+		((uint32_t)func->bytecode[*pc + 5] << 8) |
+		(uint32_t)func->bytecode[*pc + 6];
+	if (target > (uint32_t)func->bytecode_size + 1) {
 		printf(BROKEN_BYTECODE);
 		return false;
 	}
@@ -1022,18 +1036,18 @@ cback_visit_jmpiffalse_op(
 		return false;
 	}
 
-	src = (func->bytecode[*pc + 1] << 8) |
-		func->bytecode[*pc + 2];
-	if (src >= func->tmpvar_size + 1) {
+	src = ((uint32_t)func->bytecode[*pc + 1] << 8) |
+		(uint32_t)func->bytecode[*pc + 2];
+	if (src >= (uint32_t)func->tmpvar_size + 1) {
 		printf(BROKEN_BYTECODE);
 		return false;
 	}
 
-	target = (func->bytecode[*pc + 3] << 24) |
-		(func->bytecode[*pc + 4] << 16) |
-		(func->bytecode[*pc + 5] << 8) |
-		func->bytecode[*pc + 6];
-	if (target > func->bytecode_size) {
+	target = ((uint32_t)func->bytecode[*pc + 3] << 24) |
+		((uint32_t)func->bytecode[*pc + 4] << 16) |
+		((uint32_t)func->bytecode[*pc + 5] << 8) |
+		(uint32_t)func->bytecode[*pc + 6];
+	if (target > (uint32_t)func->bytecode_size) {
 		printf(BROKEN_BYTECODE);
 		return false;
 	}

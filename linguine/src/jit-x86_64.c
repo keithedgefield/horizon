@@ -198,6 +198,9 @@ jit_free(
 	 struct rt_env *rt,
 	 struct rt_func *func)
 {
+	UNUSED_PARAMETER(rt);
+	UNUSED_PARAMETER(func);
+
 	/* XXX: */
 }
 
@@ -304,10 +307,10 @@ jit_get_opr_imm32(
 		return false;
 	}
 
-	*d = (ctx->func->bytecode[ctx->lpc] << 24) |
-	     (ctx->func->bytecode[ctx->lpc + 1] << 16) |
-	     (ctx->func->bytecode[ctx->lpc + 2] << 8) |
-	      ctx->func->bytecode[ctx->lpc + 3];
+	*d = ((uint32_t)ctx->func->bytecode[ctx->lpc] << 24) |
+	     ((uint32_t)ctx->func->bytecode[ctx->lpc + 1] << 16) |
+	     ((uint32_t)ctx->func->bytecode[ctx->lpc + 2] << 8) |
+		(uint32_t)ctx->func->bytecode[ctx->lpc + 3];
 
 	ctx->lpc += 4;
 
@@ -366,7 +369,7 @@ jit_get_opr_string(
 {
 	int len;
 
-	len = strlen((const char *)&ctx->func->bytecode[ctx->lpc]);
+	len = (int)strlen((const char *)&ctx->func->bytecode[ctx->lpc]);
 	if (ctx->lpc + len + 1 > ctx->func->bytecode_size) {
 		rt_error(ctx->rt, BROKEN_BYTECODE);
 		return false;
@@ -391,9 +394,9 @@ jit_get_opr_string(
 		/* r14: &rt->frame->tmpvar[0] */								\
 														\
 		/* movq %r14, %rdi */			IB(0x4c); IB(0x89); IB(0xf7);				\
-		/* movq dst, %rsi */			IB(0x48); IB(0xc7); IB(0xc6); ID(dst); 			\
-		/* movq src1, %rdx */			IB(0x48); IB(0xc7); IB(0xc2); ID(src1);			\
-		/* movq src2, %rcx */			IB(0x48); IB(0xc7); IB(0xc1); ID(src2);			\
+		/* movq dst, %rsi */			IB(0x48); IB(0xc7); IB(0xc6); ID((uint32_t)dst); 	\
+		/* movq src1, %rdx */			IB(0x48); IB(0xc7); IB(0xc2); ID((uint32_t)src1);	\
+		/* movq src2, %rcx */			IB(0x48); IB(0xc7); IB(0xc1); ID((uint32_t)src2);	\
 		/* movabs f, %r8 */			IB(0x49); IB(0xb8); IQ((uint64_t)f);			\
 		/* call *%r8 */				IB(0x41); IB(0xff); IB(0xd0);				\
 														\
@@ -411,8 +414,8 @@ jit_get_opr_string(
 		/* r14: &rt->frame->tmpvar[0] */								\
 														\
 		/* movq %r14, %rdi */			IB(0x4c); IB(0x89); IB(0xf7);				\
-		/* movq dst, %rsi */			IB(0x48); IB(0xc7); IB(0xc6); ID(dst); 			\
-		/* movq src, %rdx */			IB(0x48); IB(0xc7); IB(0xc2); ID(src);			\
+		/* movq dst, %rsi */			IB(0x48); IB(0xc7); IB(0xc6); ID((uint32_t)dst); 	\
+		/* movq src, %rdx */			IB(0x48); IB(0xc7); IB(0xc2); ID((uint32_t)src);	\
 		/* movabs f, %r8 */			IB(0x49); IB(0xb8); IQ((uint64_t)f);			\
 		/* call *%r8 */				IB(0x41); IB(0xff); IB(0xd0);				\
 														\
@@ -432,7 +435,6 @@ jit_visit_lineinfo_op(
 	struct jit_context *ctx)
 {
 	uint32_t line;
-	uint64_t addr;
 
 	CONSUME_IMM32(line);
 
@@ -452,7 +454,6 @@ static INLINE bool
 jit_visit_assign_op(
 	struct jit_context *ctx)
 {
-	int pc;
 	int dst;
 	int src;
 
@@ -463,8 +464,8 @@ jit_visit_assign_op(
 	ASM {
 		/* r15 = &rt->frame->tmpvar[0] */
 
-		/* movq dst, %rax */		IB(0x48); IB(0xc7); IB(0xc0); ID(dst);
-		/* movq src, %rbx */		IB(0x48); IB(0xc7); IB(0xc3); ID(src);
+		/* movq dst, %rax */		IB(0x48); IB(0xc7); IB(0xc0); ID((uint32_t)dst);
+		/* movq src, %rbx */		IB(0x48); IB(0xc7); IB(0xc3); ID((uint32_t)src);
 		/* shlq $4, %rax */		IB(0xc1); IB(0xe0); IB(0x04);
 		/* shlq $4, %rbx */		IB(0xc1); IB(0xe3); IB(0x04);
 		/* addq %r15, %rax */		IB(0x4c); IB(0x01); IB(0xf8);
@@ -494,11 +495,11 @@ jit_visit_iconst_op(
 	ASM {
 		/* r15 = &rt->frame->tmpvar[0] */
 
-		/* movq dst, %rax */		IB(0x48); IB(0xc7); IB(0xc0); ID(dst);
+		/* movq dst, %rax */		IB(0x48); IB(0xc7); IB(0xc0); ID((uint32_t)dst);
 		/* shlq $4, %rax */		IB(0x48); IB(0xc1); IB(0xe0); IB(04);
 		/* addq %r15, %rax */		IB(0x4c); IB(0x01); IB(0xf8);
 		/* movl $0, (%rax) */		IB(0xc7); IB(0x00); ID(0);
-		/* movl val, 8(%rax) */		IB(0xc7); IB(0x40); IB(0x08); ID(val);
+		/* movl val, 8(%rax) */		IB(0xc7); IB(0x40); IB(0x08); ID((uint32_t)val);
 	}
 
 	return true;
@@ -520,7 +521,7 @@ jit_visit_fconst_op(
 	ASM {
 		/* r15 = &rt->frame->tmpvar[0] */
 
-		/* movq dst, %rax */		IB(0x48); IB(0xc7); IB(0xc0); ID(dst);
+		/* movq dst, %rax */		IB(0x48); IB(0xc7); IB(0xc0); ID((uint32_t)dst);
 		/* shlq $4, %rax */		IB(0x48); IB(0xc1); IB(0xe0); IB(04);
 		/* addq %r15, %rax */		IB(0x4c); IB(0x01); IB(0xf8);
 		/* movl $1, (%rax) */		IB(0xc7); IB(0x00); ID(1);
@@ -548,7 +549,7 @@ jit_visit_sconst_op(
 		/* r15 = &rt->frame->tmpvar[0] */
 
 		/* movq %r14, %rdi */			IB(0x4c); IB(0x89); IB(0xf7);
-		/* movq dst, %rsi */			IB(0x48); IB(0xc7); IB(0xc6); ID(dst);
+		/* movq dst, %rsi */			IB(0x48); IB(0xc7); IB(0xc6); ID((uint32_t)dst);
 		/* shlq $4, %rsi */			IB(0x48); IB(0xc1); IB(0xe6); IB(0x04);
 		/* addq %r15, %rsi */			IB(0x4c); IB(0x01); IB(0xfe);
 		/* movabs val, %rdx */			IB(0x48); IB(0xba); IQ((uint64_t)val);
@@ -576,7 +577,7 @@ jit_visit_aconst_op(
 	/* rt_make_empty_array(rt, &rt->frame->tmpvar[dst]); */
 	ASM {
 		/* movq %r14, %rdi */			IB(0x4c); IB(0x89); IB(0xf7);
-		/* movq dst, %rsi */			IB(0x48); IB(0xc7); IB(0xc6); ID(dst);
+		/* movq dst, %rsi */			IB(0x48); IB(0xc7); IB(0xc6); ID((uint32_t)dst);
 		/* shlq $4, %rsi */			IB(0x48); IB(0xc1); IB(0xe6); IB(0x04);
 		/* addq %r15, %rsi */			IB(0x4c); IB(0x01); IB(0xfe);
 		/* movabs rt_make_empty_array, %r8 */	IB(0x49); IB(0xb8); IQ((uint64_t)rt_make_empty_array);
@@ -603,7 +604,7 @@ jit_visit_dconst_op(
 	/* rt_make_empty_dict(rt, &rt->frame->tmpvar[dst]); */
 	ASM {
 		/* movq %r14, %rdi */			IB(0x4c); IB(0x89); IB(0xf7);
-		/* movq dst, %rsi */			IB(0x48); IB(0xc7); IB(0xc6); ID(dst);
+		/* movq dst, %rsi */			IB(0x48); IB(0xc7); IB(0xc6); ID((uint32_t)dst);
 		/* shlq $4, %rsi */			IB(0x48); IB(0xc1); IB(0xe6); IB(0x04);
 		/* addq %r15, %rsi */			IB(0x4c); IB(0x01); IB(0xfe);
 		/* movabs rt_make_empty_dict, %r8 */	IB(0x49); IB(0xb8); IQ((uint64_t)rt_make_empty_dict);
@@ -623,7 +624,6 @@ static INLINE bool
 jit_visit_inc_op(
 	struct jit_context *ctx)
 {
-	struct rt_value *val;
 	int dst;
 
 	CONSUME_TMPVAR(dst);
@@ -632,7 +632,7 @@ jit_visit_inc_op(
 	ASM {
 		/* r15 = &rt->frame->tmpvar[0] */
 
-		/* movq dst, %rax */			IB(0x48); IB(0xc7); IB(0xc0); ID(dst);
+		/* movq dst, %rax */			IB(0x48); IB(0xc7); IB(0xc0); ID((uint32_t)dst);
 		/* shlq $4, %rax */			IB(0x48); IB(0xc1); IB(0xe0); IB(0x04);
 		/* addq %r15, %rax */			IB(0x4c); IB(0x01); IB(0xf8);
 		/* incq 8(%rax) */			IB(0x48); IB(0xff); IB(0x40); IB(0x08);
@@ -920,15 +920,15 @@ jit_visit_eqi_op(
 
 	/* src1 - src2 */
 	ASM {
-		/* movq dst, %rax */		IB(0x48); IB(0xc7); IB(0xc0); ID(dst);
+		/* movq dst, %rax */		IB(0x48); IB(0xc7); IB(0xc0); ID((uint32_t)dst);
 		/* shlq $4, %rax */		IB(0x48); IB(0xc1); IB(0xe0); IB(0x04);
 		/* addq %r15, %rax */		IB(0x4c); IB(0x01); IB(0xf8);
 
-		/* movq src1, %rbx */		IB(0x48); IB(0xc7); IB(0xc3); ID(src1);
+		/* movq src1, %rbx */		IB(0x48); IB(0xc7); IB(0xc3); ID((uint32_t)src1);
 		/* shlq $4, %rbx */		IB(0x48); IB(0xc1); IB(0xe3); IB(0x04);
 		/* addq %r15, %rbx */		IB(0x4c); IB(0x01); IB(0xfb);
 		
-		/* movq src2, %rcx */		IB(0x48); IB(0xc7); IB(0xc1); ID(src2);
+		/* movq src2, %rcx */		IB(0x48); IB(0xc7); IB(0xc1); ID((uint32_t)src2);
 		/* shlq $4, %rcx */		IB(0x48); IB(0xc1); IB(0xe1); IB(0x04);
 		/* addq %r15, %rcx */		IB(0x4c); IB(0x01); IB(0xf9);
 
@@ -1063,7 +1063,7 @@ jit_visit_loadsymbol_op(
 
 	CONSUME_TMPVAR(dst);
 	CONSUME_STRING(src_s);
-	src = (intptr_t)src_s;
+	src = (uint64_t)(intptr_t)src_s;
 
 	/* if (!rt_loadsymbol_helper(rt, dst, src)) return false; */
 	ASM {
@@ -1072,7 +1072,7 @@ jit_visit_loadsymbol_op(
 		/* r14: &rt->frame->tmpvar[0] */
 
 		/* movq %r14, %rdi */			IB(0x4c); IB(0x89); IB(0xf7);
-		/* movq dst, %rsi */			IB(0x48); IB(0xc7); IB(0xc6); ID(dst);
+		/* movq dst, %rsi */			IB(0x48); IB(0xc7); IB(0xc6); ID((uint32_t)dst);
 		/* movabs src, %rdx */			IB(0x48); IB(0xba); IQ(src);
 		/* movabs rt_loadsymbol_helper, %r8 */	IB(0x49); IB(0xb8); IQ((uint64_t)rt_loadsymbol_helper);
 		/* call *%r8 */				IB(0x41); IB(0xff); IB(0xd0);
@@ -1097,7 +1097,7 @@ jit_visit_storesymbol_op(
 
 	CONSUME_STRING(dst_s);
 	CONSUME_TMPVAR(src);
-	dst = (intptr_t)dst_s;
+	dst = (uint64_t)(intptr_t)dst_s;
 
 	/* if (!rt_storesymbol_helper(rt, dst, src)) return false; */
 	ASM {
@@ -1107,7 +1107,7 @@ jit_visit_storesymbol_op(
 
 		/* movq %r14, %rdi */			IB(0x4c); IB(0x89); IB(0xf7);
 		/* movabs dst, %rsi */			IB(0x48); IB(0xbe); IQ(dst);
-		/* movq src, %rdx */			IB(0x48); IB(0xc7); IB(0xc2); ID(src);
+		/* movq src, %rdx */			IB(0x48); IB(0xc7); IB(0xc2); ID((uint32_t)src);
 		/* movabs rt_storesymbol_helper, %r8 */	IB(0x49); IB(0xb8); IQ((uint64_t)rt_storesymbol_helper);
 		/* call *%r8 */				IB(0x41); IB(0xff); IB(0xd0);
 
@@ -1133,7 +1133,7 @@ jit_visit_loaddot_op(
 	CONSUME_TMPVAR(dst);
 	CONSUME_TMPVAR(dict);
 	CONSUME_STRING(field_s);
-	field = (intptr_t)field_s;
+	field = (uint64_t)(intptr_t)field_s;
 
 	/* if (!rt_loaddot_helper(rt, dst, dict, field)) return false; */
 	ASM {
@@ -1142,8 +1142,8 @@ jit_visit_loaddot_op(
 		/* r14: &rt->frame->tmpvar[0] */
 
 		/* movq %r14, %rdi */			IB(0x4c); IB(0x89); IB(0xf7);
-		/* movq dst, %rsi */			IB(0x48); IB(0xc7); IB(0xc6); ID(dst);
-		/* movq dict, %rdx */			IB(0x48); IB(0xc7); IB(0xc2); ID(dict);
+		/* movq dst, %rsi */			IB(0x48); IB(0xc7); IB(0xc6); ID((uint32_t)dst);
+		/* movq dict, %rdx */			IB(0x48); IB(0xc7); IB(0xc2); ID((uint32_t)dict);
 		/* movabs field, %rcx */		IB(0x48); IB(0xb9); IQ(field);
 		/* movabs rt_loaddot_helper, %r8 */	IB(0x49); IB(0xb8); IQ((uint64_t)rt_loaddot_helper);
 		/* call *%r8 */				IB(0x41); IB(0xff); IB(0xd0);
@@ -1170,7 +1170,7 @@ jit_visit_storedot_op(
 	CONSUME_TMPVAR(dict);
 	CONSUME_STRING(field_s);
 	CONSUME_TMPVAR(src);
-	field = (intptr_t)field_s;
+	field = (uint64_t)(intptr_t)field_s;
 
 	/* if (!jit_storedot_helper(rt, dict, field, src)) return false; */
 	ASM {
@@ -1179,9 +1179,9 @@ jit_visit_storedot_op(
 		/* r14: &rt->frame->tmpvar[0] */
 
 		/* movq %r14, %rdi */			IB(0x4c); IB(0x89); IB(0xf7);
-		/* movq dict, %rsi */			IB(0x48); IB(0xc7); IB(0xc6); ID(dict);
+		/* movq dict, %rsi */			IB(0x48); IB(0xc7); IB(0xc6); ID((uint32_t)dict);
 		/* movabs field, %rdx */		IB(0x48); IB(0xba); IQ(field);
-		/* movq src, %rcx */			IB(0x48); IB(0xc7); IB(0xc1); ID(src);
+		/* movq src, %rcx */			IB(0x48); IB(0xc7); IB(0xc1); ID((uint32_t)src);
 		/* movabs rt_storedot_helper, %r8 */	IB(0x49); IB(0xb8); IQ((uint64_t)rt_storedot_helper);
 		/* call *%r8 */				IB(0x41); IB(0xff); IB(0xd0);
 
@@ -1219,11 +1219,11 @@ jit_visit_call_op(
 	ASM {
 		/* jmp (5 + arg_count * 4) */
 		IB(0xe9);
-		ID(4 * arg_count);
+		ID((uint32_t)(4 * arg_count));
 	}
-	arg_addr = (intptr_t)ctx->code;
+	arg_addr = (uint64_t)(intptr_t)ctx->code;
 	for (i = 0; i < arg_count; i++) {
-		*(int *)ctx->code = (uint32_t)arg[i];
+		*(int *)ctx->code = arg[i];
 		ctx->code += 4;
 	}
 
@@ -1234,9 +1234,9 @@ jit_visit_call_op(
 		/* r14: &rt->frame->tmpvar[0] */
 
 		/* movq %r14, %rdi */			IB(0x4c); IB(0x89); IB(0xf7);
-		/* movq dst, %rsi */			IB(0x48); IB(0xc7); IB(0xc6); ID(dst);
-		/* movq func, %rdx */			IB(0x48); IB(0xc7); IB(0xc2); ID(func);
-		/* movq arg_count, %rcx */		IB(0x48); IB(0xc7); IB(0xc1); ID(arg_count);
+		/* movq dst, %rsi */			IB(0x48); IB(0xc7); IB(0xc6); ID((uint32_t)dst);
+		/* movq func, %rdx */			IB(0x48); IB(0xc7); IB(0xc2); ID((uint32_t)func);
+		/* movq arg_count, %rcx */		IB(0x48); IB(0xc7); IB(0xc1); ID((uint32_t)arg_count);
 		/* movabs arg_addr, %r8 */		IB(0x49); IB(0xb8); IQ(arg_addr);
 		/* movabs rt_call_helper, %r9 */	IB(0x49); IB(0xb9); IQ((uint64_t)rt_call_helper);
 		/* call *%r9 */				IB(0x41); IB(0xff); IB(0xd1);
@@ -1277,11 +1277,11 @@ jit_visit_thiscall_op(
 	ASM {
 		/* jmp (5 + arg_count * 4) */
 		IB(0xe9);
-		ID(4 * arg_count);
+		ID((uint32_t)(4 * arg_count));
 	}
-	arg_addr = (intptr_t)ctx->code;
+	arg_addr = (uint64_t)(intptr_t)ctx->code;
 	for (i = 0; i < arg_count; i++) {
-		*(int *)ctx->code = (uint32_t)arg[i];
+		*(int *)ctx->code = arg[i];
 		ctx->code += 4;
 	}
 
@@ -1292,10 +1292,10 @@ jit_visit_thiscall_op(
 		/* r14: &rt->frame->tmpvar[0] */
 
 		/* movq %r14, %rdi */			IB(0x4c); IB(0x89); IB(0xf7);
-		/* movq dst, %rsi */			IB(0x48); IB(0xc7); IB(0xc6); ID(dst);
-		/* movq obj, %rdx */			IB(0x48); IB(0xc7); IB(0xc2); ID(obj);
+		/* movq dst, %rsi */			IB(0x48); IB(0xc7); IB(0xc6); ID((uint32_t)dst);
+		/* movq obj, %rdx */			IB(0x48); IB(0xc7); IB(0xc2); ID((uint32_t)obj);
 		/* movabs symbol, %rcx */		IB(0x48); IB(0x89); IQ((uint64_t)symbol);
-		/* movq arg_count, %r8 */		IB(0x49); IB(0xc7); IB(0xc0); ID(arg_count);
+		/* movq arg_count, %r8 */		IB(0x49); IB(0xc7); IB(0xc0); ID((uint32_t)arg_count);
 		/* movabs arg_addr, %r9 */		IB(0x49); IB(0xb9); IQ(arg_addr);
 		/* movabs rt_call_helper, %r10 */	IB(0x49); IB(0xba); IQ((uint64_t)rt_call_helper);
 		/* call *%r10 */			IB(0x41); IB(0xff); IB(0xd2);
@@ -1317,7 +1317,7 @@ jit_visit_jmp_op(
 	uint32_t target_lpc;
 
 	CONSUME_IMM32(target_lpc);
-	if (target_lpc >= ctx->func->bytecode_size + 1) {
+	if (target_lpc >= (uint32_t)(ctx->func->bytecode_size + 1)) {
 		rt_error(ctx->rt, BROKEN_BYTECODE);
 		return false;
 	}
@@ -1346,7 +1346,7 @@ jit_visit_jmpiftrue_op(
 
 	CONSUME_TMPVAR(src);
 	CONSUME_IMM32(target_lpc);
-	if (target_lpc >= ctx->func->bytecode_size + 1) {
+	if (target_lpc >= (uint32_t)(ctx->func->bytecode_size + 1)) {
 		rt_error(ctx->rt, BROKEN_BYTECODE);
 		return false;
 	}
@@ -1354,7 +1354,7 @@ jit_visit_jmpiftrue_op(
 	ASM {
 		/* rdx = &rt->frame->tmpvar[src] */
 		/* movq %r14, %rcx */			IB(0x4c); IB(0x89); IB(0xf1);
-		/* movq src, %rdx */			IB(0x48); IB(0xc7); IB(0xc2); ID(src);
+		/* movq src, %rdx */			IB(0x48); IB(0xc7); IB(0xc2); ID((uint32_t)src);
 		/* shlq $4, %rdx */			IB(0x48); IB(0xc1); IB(0xe2); IB(0x04);
 		/* addq %r15, %rdx */			IB(0x4c); IB(0x01); IB(0xfa);
 		/* movl 8(%rdx), %eax */		IB(0x8b); IB(0x42); IB(0x08);
@@ -1387,7 +1387,7 @@ jit_visit_jmpiffalse_op(
 
 	CONSUME_TMPVAR(src);
 	CONSUME_IMM32(target_lpc);
-	if (target_lpc >= ctx->func->bytecode_size + 1) {
+	if (target_lpc >= (uint32_t)(ctx->func->bytecode_size + 1)) {
 		rt_error(ctx->rt, BROKEN_BYTECODE);
 		return false;
 	}
@@ -1395,7 +1395,7 @@ jit_visit_jmpiffalse_op(
 	ASM {
 		/* rdx = &rt->frame->tmpvar[src] */
 		/* movq %r14, %rcx */			IB(0x4c); IB(0x89); IB(0xf1);
-		/* movq src, %rdx */			IB(0x48); IB(0xc7); IB(0xc2); ID(src);
+		/* movq src, %rdx */			IB(0x48); IB(0xc7); IB(0xc2); ID((uint32_t)src);
 		/* shlq $4, %rdx */			IB(0x48); IB(0xc1); IB(0xe2); IB(0x04);
 		/* addq %r15, %rdx */			IB(0x4c); IB(0x01); IB(0xfa);
 		/* movl 8(%rdx), %eax */		IB(0x8b); IB(0x42); IB(0x08);
@@ -1428,7 +1428,7 @@ jit_visit_jmpifeq_op(
 
 	CONSUME_TMPVAR(src);
 	CONSUME_IMM32(target_lpc);
-	if (target_lpc >= ctx->func->bytecode_size + 1) {
+	if (target_lpc >= (uint32_t)(ctx->func->bytecode_size + 1)) {
 		rt_error(ctx->rt, BROKEN_BYTECODE);
 		return false;
 	}
@@ -1475,7 +1475,7 @@ jit_visit_bytecode(
 		/* movq (%rax), %r15 */			IB(0x4c); IB(0x8b); IB(0x38);
 
 		/* r13 = exception_handler */
-		/* movabs (ctx->code + 12), %r13 */	IB(0x49); IB(0xbd); IQ((intptr_t)(ctx->code + 10));
+		/* movabs (ctx->code + 12), %r13 */	IB(0x49); IB(0xbd); IQ((uint64_t)(intptr_t)(ctx->code + 10));
 
 		/* Skip an exception handler. */
 		/* jmp exception_handler_end */		IB(0xeb); IB(0x14);
@@ -1506,7 +1506,7 @@ jit_visit_bytecode(
 			rt_error(ctx->rt, "Too big code.");
 			return false;
 		}
-		ctx->pc_entry[ctx->pc_entry_count].lpc = ctx->lpc;
+		ctx->pc_entry[ctx->pc_entry_count].lpc = (uint32_t)ctx->lpc;
 		ctx->pc_entry[ctx->pc_entry_count].code = ctx->code;
 		ctx->pc_entry_count++;
 
@@ -1718,7 +1718,7 @@ jit_patch_branch(
 	}
 
 	/* Calc a branch offset. */
-	offset = (intptr_t)target_code - (intptr_t)ctx->branch_patch[patch_index].code;
+	offset = (int)((intptr_t)target_code - (intptr_t)ctx->branch_patch[patch_index].code);
 
 	/* Set the assembler cursor. */
 	ctx->code = ctx->branch_patch[patch_index].code;
@@ -1729,7 +1729,7 @@ jit_patch_branch(
 		ASM {
 			/* jmp offset */
 			IB(0xe9);
-			ID(offset);
+			ID((uint32_t)offset);
 		}
 	} else if (ctx->branch_patch[patch_index].type == PATCH_JE) {
 		offset -= 6;
@@ -1737,7 +1737,7 @@ jit_patch_branch(
 			/* je offset */
 			IB(0x0f);
 			IB(0x84);
-			ID(offset);
+			ID((uint32_t)offset);
 		}
 	} else if (ctx->branch_patch[patch_index].type == PATCH_JNE) {
 		offset -= 6;
@@ -1745,7 +1745,7 @@ jit_patch_branch(
 			/* jne offset */
 			IB(0x0f);
 			IB(0x85);
-			ID(offset);
+			ID((uint32_t)offset);
 		}
 	}
 

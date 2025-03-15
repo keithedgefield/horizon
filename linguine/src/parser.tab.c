@@ -2409,7 +2409,7 @@ yyreduce:
   case 76: /* term: TOKEN_FLOAT  */
 #line 568 "../../src/parser.y"
                 {
-			(yyval.term) = ast_accept_float_term((yyvsp[0].fval));
+			(yyval.term) = ast_accept_float_term((float)(yyvsp[0].fval));
 			debug("term: float");
 		}
 #line 2416 "../../src/parser.tab.c"

@@ -209,7 +209,6 @@ rt_register_source(
 {
 	struct hir_block *hfunc;
 	struct lir_func *lfunc;
-	struct rt_func *rfunc;
 	int i, func_count;
 	bool is_succeeded;
 
@@ -297,7 +296,7 @@ rt_register_lir(
 		}
 	}
 	func->bytecode_size = lir->bytecode_size;
-	func->bytecode = malloc(lir->bytecode_size);
+	func->bytecode = malloc((size_t)lir->bytecode_size);
 	if (func->bytecode == NULL) {
 		rt_out_of_memory(rt);
 		return false;
@@ -345,6 +344,11 @@ rt_register_lir(
 bool rt_register_bytecode(struct rt_env *rt, uint32_t size, uint8_t *data)
 {
 	assert(NOT_IMPLEMENTED);
+
+	UNUSED_PARAMETER(rt);
+	UNUSED_PARAMETER(size);
+	UNUSED_PARAMETER(data);
+
 	return false;
 }
 
@@ -526,12 +530,12 @@ rt_enter_frame(
 	memset(frame, 0, sizeof(struct rt_frame));
 	frame->func = func;
 	frame->tmpvar_size = func->tmpvar_size;
-	frame->tmpvar = malloc(sizeof(struct rt_value) * func->tmpvar_size);
+	frame->tmpvar = malloc(sizeof(struct rt_value) * (size_t)func->tmpvar_size);
 	if (frame->tmpvar == NULL) {
 		rt_out_of_memory(rt);
 		return false;
 	}
-	memset(frame->tmpvar, 0, sizeof(struct rt_value) * func->tmpvar_size);
+	memset(frame->tmpvar, 0, sizeof(struct rt_value) * (size_t)func->tmpvar_size);
 
 	frame->next = rt->frame;
 	rt->frame = frame;
@@ -731,7 +735,7 @@ rt_make_empty_array(struct rt_env *rt, struct rt_value *val)
 	}
 
 	/* Increment the heap usage. */
-	rt->heap_usage += arr->alloc_size * sizeof(struct rt_value);
+	rt->heap_usage += (size_t)arr->alloc_size * sizeof(struct rt_value);
 
 	return true;
 }
@@ -787,7 +791,7 @@ rt_make_empty_dict(struct rt_env *rt, struct rt_value *val)
 	}
 
 	/* Increment the heap usage. */
-	rt->heap_usage += dict->alloc_size * sizeof(struct rt_value);
+	rt->heap_usage += (size_t)dict->alloc_size * sizeof(struct rt_value);
 
 	return true;
 }
@@ -801,7 +805,10 @@ rt_copy_value(
 	struct rt_value *dst,
 	struct rt_value *src)
 {
+	UNUSED_PARAMETER(rt);
+
 	*dst = *src;
+
 	return true;
 }
 
@@ -988,22 +995,22 @@ rt_expand_array(
 	/* Expand the table. */
 	if (arr->alloc_size < size) {
 		/* Decrement the heap usage. */
-		rt->heap_usage -= arr->alloc_size * sizeof(struct rt_value);
+		rt->heap_usage -= (size_t)arr->alloc_size * sizeof(struct rt_value);
 
 		/* Realloc the table. */
-		new_tbl = malloc(sizeof(struct rt_value) * size);
+		new_tbl = malloc(sizeof(struct rt_value) * (size_t)size);
 		if (new_tbl == NULL) {
 			rt_out_of_memory(rt);
 			return false;
 		}
-		memset(new_tbl, 0, sizeof(struct rt_value) * size);
-		memcpy(new_tbl, arr->table, sizeof(struct rt_value) * arr->alloc_size);
+		memset(new_tbl, 0, sizeof(struct rt_value) * (size_t)size);
+		memcpy(new_tbl, arr->table, sizeof(struct rt_value) * (size_t)arr->alloc_size);
 		free(arr->table);
 		arr->table = new_tbl;
 		arr->alloc_size = size;
 
 		/* Increment the heap usage. */
-		rt->heap_usage += arr->alloc_size * sizeof(struct rt_value);
+		rt->heap_usage += (size_t)arr->alloc_size * sizeof(struct rt_value);
 	}
 
 	return true;
@@ -1016,7 +1023,6 @@ rt_resize_array(
 	int size)
 {
 	struct rt_array *a;
-	struct rt_value *new_tbl;
 
 	assert(rt != NULL);
 	assert(arr->type == RT_VALUE_ARRAY);
@@ -1030,7 +1036,7 @@ rt_resize_array(
 	/* If we shrink the array: */
 	if (size <= a->size) {
 		/* Remove the reminder. */
-		memset(&a->table[size], 0, sizeof(struct rt_value) * (a->size - size - 1));
+		memset(&a->table[size], 0, sizeof(struct rt_value) * (size_t)(a->size - size - 1));
 	}
 
 	/* Set the element count. */
@@ -1181,32 +1187,32 @@ rt_expand_dict(
 	/* Expand the table. */
 	if (d->alloc_size < size) {
 		/* Decrement the heap usage. */
-		rt->heap_usage -= d->alloc_size * (sizeof(char *) + sizeof(struct rt_value));
+		rt->heap_usage -= (size_t)d->alloc_size * (sizeof(char *) + sizeof(struct rt_value));
 
 		/* Realloc the key table. */
-		new_key = malloc(sizeof(const char *) * size);
+		new_key = malloc(sizeof(const char *) * (size_t)size);
 		if (new_key == NULL) {
 			rt_out_of_memory(rt);
 			return false;
 		}
-		memcpy(new_key, d->key, sizeof(struct rt_value) * d->alloc_size);
+		memcpy(new_key, d->key, sizeof(struct rt_value) * (size_t)d->alloc_size);
 		free(d->key);
 		d->key = new_key;
 
 		/* Realloc the value table. */
-		new_value = malloc(sizeof(struct rt_value) * size);
+		new_value = malloc(sizeof(struct rt_value) * (size_t)size);
 		if (new_value == NULL) {
 			rt_out_of_memory(rt);
 			return false;
 		}
-		memcpy(new_value, d->value, sizeof(struct rt_value) * d->alloc_size);
+		memcpy(new_value, d->value, sizeof(struct rt_value) * (size_t)d->alloc_size);
 		free(d->value);
 		d->value = new_value;
 
 		d->alloc_size = size;
 
 		/* Increment the heap usage. */
-		rt->heap_usage += d->alloc_size * (sizeof(char *) + sizeof(struct rt_value));
+		rt->heap_usage += (size_t)d->alloc_size * (sizeof(char *) + sizeof(struct rt_value));
 	}
 
 	return true;
@@ -1233,10 +1239,10 @@ rt_remove_dict_elem(
 			free(dict->val.dict->key[i]);
 			memmove(&dict->val.dict->key[i],
 				&dict->val.dict->key[i + 1],
-				sizeof(const char *) * (dict->val.dict->size - i - 1));
+				sizeof(const char *) * (size_t)(dict->val.dict->size - i - 1));
 			memmove(&dict->val.dict->value[i],
 				&dict->val.dict->value[i + 1],
-				sizeof(struct rt_value) * (dict->val.dict->size - i - 1));
+				sizeof(struct rt_value) * (size_t)(dict->val.dict->size - i - 1));
 			dict->val.dict->size--;
 			return true;
 		}
@@ -1714,6 +1720,8 @@ rt_free_string(
 	struct rt_env *rt,
 	struct rt_string *str)
 {
+	UNUSED_PARAMETER(rt);
+
 	free(str->s);
 	free(str);
 }
@@ -1724,6 +1732,8 @@ rt_free_array(
 	struct rt_env *rt,
 	struct rt_array *array)
 {
+	UNUSED_PARAMETER(rt);
+
 	free(array->table);
 	free(array);
 }
@@ -1734,6 +1744,8 @@ rt_free_dict(
 	struct rt_env *rt,
 	struct rt_dict *dict)
 {
+	UNUSED_PARAMETER(rt);
+
 	free(dict->key);
 	free(dict->value);
 	free(dict);
@@ -1754,9 +1766,9 @@ rt_get_heap_usage(
  */
 
 #if !defined(USE_DEBUGGER)
-static INLINE void dbg_pre_hook(struct rt_env *rt) { }
-static INLINE void dbg_post_hook(struct rt_env *rt) { }
-static INLINE bool dbg_error_hook(struct rt_env *rt) { return false; }
+static INLINE void dbg_pre_hook(struct rt_env *rt) { UNUSED_PARAMETER(rt); }
+static INLINE void dbg_post_hook(struct rt_env *rt) { UNUSED_PARAMETER(rt); }
+static INLINE bool dbg_error_hook(struct rt_env *rt) { UNUSED_PARAMETER(rt); return false; }
 #else
 void dbg_pre_hook(struct rt_env *rt);
 void dbg_post_hook(struct rt_env *rt);
@@ -1788,56 +1800,56 @@ rt_visit_bytecode(
 	return true;
 }
 
-#define UNARY_OP(helper)							\
-	uint32_t dst;								\
-	uint32_t src;								\
-										\
-	if (*pc + 1 + 2 + 2 > func->bytecode_size) {				\
-		rt_error(rt, BROKEN_BYTECODE);					\
-		return false;							\
-	}									\
-	dst = (func->bytecode[*pc + 1] << 8) | func->bytecode[*pc + 2];		\
-	if (dst >= func->tmpvar_size) {						\
-		rt_error(rt, BROKEN_BYTECODE);					\
-		return false;							\
-	}									\
-	src = (func->bytecode[*pc + 3] << 8) | func->bytecode[*pc + 4];		\
-	if (src >= func->tmpvar_size) {						\
-		rt_error(rt, BROKEN_BYTECODE);					\
-		return false;							\
-	}									\
-	if (!helper(rt, dst, src))						\
-		return false;							\
-	*pc += 1 + 2 + 2;							\
+#define UNARY_OP(helper)									\
+	uint32_t dst;										\
+	uint32_t src;										\
+												\
+	if (*pc + 1 + 2 + 2 > func->bytecode_size) {						\
+		rt_error(rt, BROKEN_BYTECODE);							\
+		return false;									\
+	}											\
+	dst = ((uint32_t)func->bytecode[*pc + 1] << 8) | (uint32_t)func->bytecode[*pc + 2]; 	\
+	if (dst >= (uint32_t)func->tmpvar_size) {						\
+		rt_error(rt, BROKEN_BYTECODE);							\
+		return false;									\
+	}											\
+	src = ((uint32_t)func->bytecode[*pc + 3] << 8) | func->bytecode[*pc + 4];		\
+	if (src >= (uint32_t)func->tmpvar_size) {						\
+		rt_error(rt, BROKEN_BYTECODE);							\
+		return false;									\
+	}											\
+	if (!helper(rt, (int)dst, (int)src))							\
+		return false;									\
+	*pc += 1 + 2 + 2;									\
 	return true
 
-#define BINARY_OP(helper)							\
-	uint32_t dst;								\
-	uint32_t src1;								\
-	uint32_t src2;								\
-										\
-	if (*pc + 1 + 2 + 2 + 2 > func->bytecode_size) {			\
-		rt_error(rt, BROKEN_BYTECODE);					\
-		return false;							\
-	}									\
-	dst = (func->bytecode[*pc + 1] << 8) | func->bytecode[*pc + 2];		\
-	if (dst >= func->tmpvar_size) {						\
-		rt_error(rt, BROKEN_BYTECODE);					\
-		return false;							\
-	}									\
-	src1 = (func->bytecode[*pc + 3] << 8) | func->bytecode[*pc + 4];	\
-	if (src1 >= func->tmpvar_size) {					\
-		rt_error(rt, BROKEN_BYTECODE);					\
-		return false;							\
-	}									\
-	src2 = (func->bytecode[*pc + 5] << 8) | func->bytecode[*pc + 6];	\
-	if (src2 >= func->tmpvar_size) {					\
-		rt_error(rt, BROKEN_BYTECODE);					\
-		return false;							\
-	}									\
-	if (!helper(rt, dst, src1, src2))					\
-		return false;							\
-	*pc += 1 + 2 + 2 + 2;							\
+#define BINARY_OP(helper)								\
+	uint32_t dst;									\
+	uint32_t src1;									\
+	uint32_t src2;									\
+											\
+	if (*pc + 1 + 2 + 2 + 2 > func->bytecode_size) {				\
+		rt_error(rt, BROKEN_BYTECODE);						\
+		return false;								\
+	}										\
+	dst = ((uint32_t)func->bytecode[*pc + 1] << 8) | func->bytecode[*pc + 2];	\
+	if (dst >= (uint32_t)func->tmpvar_size) {					\
+		rt_error(rt, BROKEN_BYTECODE);						\
+		return false;								\
+	}										\
+	src1 = ((uint32_t)func->bytecode[*pc + 3] << 8) | func->bytecode[*pc + 4]; 	\
+	if (src1 >= (uint32_t)func->tmpvar_size) {					\
+		rt_error(rt, BROKEN_BYTECODE);						\
+		return false;								\
+	}										\
+	src2 = ((uint32_t)func->bytecode[*pc + 5] << 8) | func->bytecode[*pc + 6]; 	\
+	if (src2 >= (uint32_t)func->tmpvar_size) {					\
+		rt_error(rt, BROKEN_BYTECODE);						\
+		return false;								\
+	}										\
+	if (!helper(rt, (int)dst, (int)src1, (int)src2))				\
+		return false;								\
+	*pc += 1 + 2 + 2 + 2;								\
 	return true
 
 /* Visit a ROP_LINEINFO instruction. */
@@ -1847,7 +1859,7 @@ rt_visit_lineinfo_op(
 	struct rt_func *func,
 	int *pc)
 {
-	int line;
+	uint32_t line;
 
 	DEBUG_TRACE(*pc, "LINEINFO");
 
@@ -1858,12 +1870,12 @@ rt_visit_lineinfo_op(
 		return false;
 	}
 
-	line = (func->bytecode[*pc + 1] << 24) |
-	       (func->bytecode[*pc + 2] << 16) |
-	       (func->bytecode[*pc + 3] << 8) |
-		func->bytecode[*pc + 4];
+	line = ((uint32_t)func->bytecode[*pc + 1] << 24) |
+	       ((uint32_t)func->bytecode[*pc + 2] << 16) |
+	       ((uint32_t)func->bytecode[*pc + 3] << 8) |
+		(uint32_t)func->bytecode[*pc + 4];
 
-	rt->line = line;
+	rt->line = (int)line;
 
 	*pc += 5;
 
@@ -1911,19 +1923,19 @@ rt_visit_iconst_op(
 		return false;
 	}
 
-	dst = (func->bytecode[*pc + 1] << 8) | func->bytecode[*pc + 2];
-	if (dst >= func->tmpvar_size) {
+	dst = ((uint32_t)func->bytecode[*pc + 1] << 8) | func->bytecode[*pc + 2];
+	if (dst >= (uint32_t)func->tmpvar_size) {
 		rt_error(rt, BROKEN_BYTECODE);
 		return false;
 	}
 
-	val = (func->bytecode[*pc + 3] << 24) |
-	       (func->bytecode[*pc + 4] << 16) |
-	       (func->bytecode[*pc + 5] << 8) |
-		func->bytecode[*pc + 6];
+	val = ((uint32_t)func->bytecode[*pc + 3] << 24) |
+	       ((uint32_t)func->bytecode[*pc + 4] << 16) |
+	       ((uint32_t)func->bytecode[*pc + 5] << 8) |
+		(uint32_t)func->bytecode[*pc + 6];
 
 	rt->frame->tmpvar[dst].type = RT_VALUE_INT;
-	rt->frame->tmpvar[dst].val.i = val;
+	rt->frame->tmpvar[dst].val.i = (int)val;
 
 	*pc += 1 + 2 + 4;
 
@@ -1948,16 +1960,16 @@ rt_visit_fconst_op(
 		return false;
 	}
 
-	dst = (func->bytecode[*pc + 1] << 8) | func->bytecode[*pc + 2];
-	if (dst >= func->tmpvar_size) {
+	dst = ((uint32_t)func->bytecode[*pc + 1] << 8) | (uint32_t)func->bytecode[*pc + 2];
+	if (dst >= (uint32_t)func->tmpvar_size) {
 		rt_error(rt, BROKEN_BYTECODE);
 		return false;
 	}
 
-	raw = (func->bytecode[*pc + 3] << 24) |
-	       (func->bytecode[*pc + 4] << 16) |
-	       (func->bytecode[*pc + 5] << 8) |
-		func->bytecode[*pc + 6];
+	raw = ((uint32_t)func->bytecode[*pc + 3] << 24) |
+	       ((uint32_t)func->bytecode[*pc + 4] << 16) |
+	       ((uint32_t)func->bytecode[*pc + 5] << 8) |
+		(uint32_t)func->bytecode[*pc + 6];
 
 	val = *(float *)&raw;
 
@@ -1987,14 +1999,15 @@ rt_visit_sconst_op(
 		return false;
 	}
 
-	dst = (func->bytecode[*pc + 1] << 8) | func->bytecode[*pc + 2];
-	if (dst >= func->tmpvar_size) {
+	dst = ((uint32_t)func->bytecode[*pc + 1] << 8) |
+		(uint32_t)func->bytecode[*pc + 2];
+	if (dst >= (uint32_t)func->tmpvar_size) {
 		rt_error(rt, BROKEN_BYTECODE);
 		return false;
 	}
 
 	s = (const char *)&func->bytecode[*pc + 3];
-	len = strlen(s);
+	len = (int)strlen(s);
 	if (*pc + 1 + 2 + len + 1 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
 		return false;
@@ -2024,8 +2037,9 @@ rt_visit_aconst_op(
 		return false;
 	}
 
-	dst = (func->bytecode[*pc + 1] << 8) | func->bytecode[*pc + 2];
-	if (dst >= func->tmpvar_size) {
+	dst = ((uint32_t)func->bytecode[*pc + 1] << 8) |
+		(uint32_t)func->bytecode[*pc + 2];
+	if (dst >= (uint32_t)func->tmpvar_size) {
 		rt_error(rt, BROKEN_BYTECODE);
 		return false;
 	}
@@ -2054,8 +2068,9 @@ rt_visit_dconst_op(
 		return false;
 	}
 
-	dst = (func->bytecode[*pc + 1] << 8) | func->bytecode[*pc + 2];
-	if (dst >= func->tmpvar_size) {
+	dst = ((uint32_t)func->bytecode[*pc + 1] << 8) |
+		(uint32_t)func->bytecode[*pc + 2];
+	if (dst >= (uint32_t)func->tmpvar_size) {
 		rt_error(rt, BROKEN_BYTECODE);
 		return false;
 	}
@@ -2087,8 +2102,9 @@ rt_visit_inc_op(
 		return false;
 	}
 
-	dst = (func->bytecode[*pc + 1] << 8) | func->bytecode[*pc + 2];
-	if (dst >= func->tmpvar_size) {
+	dst = ((uint32_t)func->bytecode[*pc + 1] << 8) |
+		(uint32_t)func->bytecode[*pc + 2];
+	if (dst >= (uint32_t)func->tmpvar_size) {
 		rt_error(rt, BROKEN_BYTECODE);
 		return false;
 	}
@@ -3239,7 +3255,7 @@ rt_len_helper(
 	switch (src_val->type) {
 	case RT_VALUE_STRING:
 		dst_val->type = RT_VALUE_INT;
-		dst_val->val.i = strlen(src_val->val.str->s);
+		dst_val->val.i = (int)strlen(src_val->val.str->s);
 		break;
 	case RT_VALUE_ARRAY:
 		dst_val->type = RT_VALUE_INT;
@@ -3278,9 +3294,6 @@ rt_getdictkeybyindex_helper(
 	struct rt_value *dst_val;
 	struct rt_value *dict_val;
 	struct rt_value *subscr_val;
-	int subscript;
-	const char *key;
-	bool is_dict;
 
 	dst_val = &rt->frame->tmpvar[dst];
 	dict_val = &rt->frame->tmpvar[dict];
@@ -3327,9 +3340,6 @@ rt_getdictvalbyindex_helper(
 	struct rt_value *dst_val;
 	struct rt_value *dict_val;
 	struct rt_value *subscr_val;
-	int subscript;
-	const char *key;
-	bool is_dict;
 
 	dst_val = &rt->frame->tmpvar[dst];
 	dict_val = &rt->frame->tmpvar[dict];
@@ -3375,7 +3385,7 @@ rt_visit_loadsymbol_op(
 	dst = (func->bytecode[*pc + 1] << 8) | (func->bytecode[*pc + 2]);
 
 	symbol = (const char *)&func->bytecode[*pc + 3];
-	len = strlen(symbol);
+	len = (int)strlen(symbol);
 	if (*pc + 2 + len + 1 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
 		return false;
@@ -3429,16 +3439,16 @@ rt_visit_storesymbol_op(
 	DEBUG_TRACE(*pc, "STORESYMBOL");
 
 	symbol = (const char *)&func->bytecode[*pc + 1];
-	len = strlen(symbol);
+	len = (int)strlen(symbol);
 	if (*pc + 1 + len + 1 + 2 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
 		return false;
 	}
 
-	src = (func->bytecode[*pc + 1 + len + 1] << 8) |
-	      (func->bytecode[*pc + 1 + len + 1 + 1]);
+	src = ((uint32_t)func->bytecode[*pc + 1 + len + 1] << 8) |
+	      ((uint32_t)func->bytecode[*pc + 1 + len + 1 + 1]);
 
-	if (!rt_storesymbol_helper(rt, symbol, src))
+	if (!rt_storesymbol_helper(rt, symbol, (int)src))
 		return false;
 
 	*pc += 1 + len + 1 + 2;
@@ -3498,26 +3508,28 @@ rt_visit_loaddot_op(
 		return false;
 	}
 
-	dst = (func->bytecode[*pc + 1] << 8) | (func->bytecode[*pc + 2]);
-	if (dst >= func->tmpvar_size) {
+	dst = ((uint32_t)func->bytecode[*pc + 1] << 8) |
+		(uint32_t)(func->bytecode[*pc + 2]);
+	if (dst >= (uint32_t)func->tmpvar_size) {
 		rt_error(rt, BROKEN_BYTECODE);
 		return false;
 	}
 
-	dict = (func->bytecode[*pc + 3] << 8) | (func->bytecode[*pc + 4]);
-	if (dict >= func->tmpvar_size) {
+	dict = ((uint32_t)func->bytecode[*pc + 3] << 8) |
+		(uint32_t)(func->bytecode[*pc + 4]);
+	if (dict >= (uint32_t)func->tmpvar_size) {
 		rt_error(rt, BROKEN_BYTECODE);
 		return false;
 	}
 
 	field = (const char *)&func->bytecode[*pc + 5];
-	len = strlen(field);
+	len = (int)strlen(field);
 	if (*pc + 1 + 2  + 2 + len + 1 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
 		return false;
 	}
 
-	if (!rt_loaddot_helper(rt, dst, dict, field))
+	if (!rt_loaddot_helper(rt, (int)dst, (int)dict, field))
 		return false;
 
 	*pc += 1 + 2 + 2 + len + 1;
@@ -3563,28 +3575,28 @@ rt_visit_storedot_op(
 		return false;
 	}
 
-	dict = (func->bytecode[*pc + 1] << 8) |
-		(func->bytecode[*pc + 2]);
-	if (dict >= func->tmpvar_size) {
+	dict = ((uint32_t)func->bytecode[*pc + 1] << 8) |
+		(uint32_t)func->bytecode[*pc + 2];
+	if (dict >= (uint32_t)func->tmpvar_size) {
 		rt_error(rt, BROKEN_BYTECODE);
 		return false;
 	}
 
 	field = (const char *)&func->bytecode[*pc + 3];
-	len = strlen(field);
+	len = (int)strlen(field);
 	if (*pc + 1 + 2  + 2 + len + 1 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
 		return false;
 	}
 
-	src = (func->bytecode[*pc + 1 + 2 + len + 1] << 8) |
-		(func->bytecode[*pc + 1 + 2 + len + 1 + 1]);
-	if (src >= func->tmpvar_size) {
+	src = ((uint32_t)func->bytecode[*pc + 1 + 2 + len + 1] << 8) |
+		(uint32_t)func->bytecode[*pc + 1 + 2 + len + 1 + 1];
+	if (src >= (uint32_t)func->tmpvar_size) {
 		rt_error(rt, BROKEN_BYTECODE);
 		return false;
 	}
 
-	if (!rt_storedot_helper(rt, dict, field, src))
+	if (!rt_storedot_helper(rt, (int)dict, field, (int)src))
 		return false;
 
 	*pc += 1 + 2 + 2 + len + 1;
@@ -3733,7 +3745,7 @@ rt_visit_thiscall_op(
 	}
 
 	name = (const char *)&func->bytecode[*pc + 5];
-	len = strlen(name);
+	len = (int)strlen(name);
 	if (*pc + 1 + 2 + 2 + len + 1 + 1 > func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
 		return false;
@@ -3767,7 +3779,6 @@ rt_thiscall_helper(
 	struct rt_value arg_val[RT_ARG_MAX];
 	struct rt_value callee_value;
 	struct rt_func *callee;
-	struct rt_func *callobj;
 	struct rt_value *obj_val;
 	struct rt_value ret;
 	int i;
@@ -3827,16 +3838,16 @@ rt_visit_jmp_op(
 		return false;
 	}
 
-	target = (func->bytecode[*pc + 1] << 24) |
-		(func->bytecode[*pc + 2] << 16) |
-		(func->bytecode[*pc + 3] << 8) |
-		func->bytecode[*pc + 4];
-	if (target > func->bytecode_size + 1) {
+	target = ((uint32_t)func->bytecode[*pc + 1] << 24) |
+		(uint32_t)(func->bytecode[*pc + 2] << 16) |
+		(uint32_t)(func->bytecode[*pc + 3] << 8) |
+		(uint32_t)func->bytecode[*pc + 4];
+	if (target > (uint32_t)func->bytecode_size + 1) {
 		rt_error(rt, BROKEN_BYTECODE);
 		return false;
 	}
 
-	*pc = target;
+	*pc = (int)target;
 
 	return true;
 }
@@ -3861,18 +3872,18 @@ rt_visit_jmpiftrue_op(
 		return false;
 	}
 
-	src = (func->bytecode[*pc + 1] << 8) |
-		func->bytecode[*pc + 2];
-	if (src >= func->tmpvar_size) {
+	src = ((uint32_t)func->bytecode[*pc + 1] << 8) |
+		(uint32_t)func->bytecode[*pc + 2];
+	if (src >= (uint32_t)func->tmpvar_size) {
 		rt_error(rt, BROKEN_BYTECODE);
 		return false;
 	}
 
-	target = (func->bytecode[*pc + 3] << 24) |
-		(func->bytecode[*pc + 4] << 16) |
-		(func->bytecode[*pc + 5] << 8) |
-		func->bytecode[*pc + 6];
-	if (target > func->bytecode_size + 1) {
+	target = ((uint32_t)func->bytecode[*pc + 3] << 24) |
+		((uint32_t)func->bytecode[*pc + 4] << 16) |
+		((uint32_t)func->bytecode[*pc + 5] << 8) |
+		(uint32_t)func->bytecode[*pc + 6];
+	if (target > (uint32_t)func->bytecode_size + 1) {
 		rt_error(rt, BROKEN_BYTECODE);
 		return false;
 	}
@@ -3883,7 +3894,7 @@ rt_visit_jmpiftrue_op(
 	}
 
 	if (rt->frame->tmpvar[src].val.i == 1)
-		*pc = target;
+		*pc = (int)target;
 	else
 		*pc += 1 + 2 + 4;
 
@@ -3907,18 +3918,18 @@ rt_visit_jmpiffalse_op(
 		return false;
 	}
 
-	src = (func->bytecode[*pc + 1] << 8) |
-		func->bytecode[*pc + 2];
-	if (src >= func->tmpvar_size + 1) {
+	src = ((uint32_t)func->bytecode[*pc + 1] << 8) |
+		(uint32_t)func->bytecode[*pc + 2];
+	if (src >= (uint32_t)func->tmpvar_size + 1) {
 		rt_error(rt, BROKEN_BYTECODE);
 		return false;
 	}
 
-	target = (func->bytecode[*pc + 3] << 24) |
-		(func->bytecode[*pc + 4] << 16) |
-		(func->bytecode[*pc + 5] << 8) |
-		func->bytecode[*pc + 6];
-	if (target > func->bytecode_size) {
+	target = ((uint32_t)func->bytecode[*pc + 3] << 24) |
+		((uint32_t)func->bytecode[*pc + 4] << 16) |
+		((uint32_t)func->bytecode[*pc + 5] << 8) |
+		(uint32_t)func->bytecode[*pc + 6];
+	if (target > (uint32_t)func->bytecode_size) {
 		rt_error(rt, BROKEN_BYTECODE);
 		return false;
 	}
@@ -3929,7 +3940,7 @@ rt_visit_jmpiffalse_op(
 	}
 
 	if (rt->frame->tmpvar[src].val.i == 0)
-		*pc = target;
+		*pc = (int)target;
 	else
 		*pc += 1 + 2 + 4;
 
@@ -4140,7 +4151,7 @@ rt_register_intrinsics(
 	};
 	int i;
 
-	for (i = 0; i < sizeof(items) / sizeof(struct item); i++) {
+	for (i = 0; i < (int)(sizeof(items) / sizeof(struct item)); i++) {
 		if (!rt_register_cfunc(rt,
 				       items[i].name,
 				       items[i].param_count,
@@ -4171,7 +4182,7 @@ rt_intrin_len(
 		break;
 	case RT_VALUE_STRING:
 		ret.type = RT_VALUE_INT;
-		ret.val.i = strlen(val.val.str->s);
+		ret.val.i = (int)strlen(val.val.str->s);
 		break;
 	case RT_VALUE_ARRAY:
 		ret.type = RT_VALUE_INT;
