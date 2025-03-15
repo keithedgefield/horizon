@@ -301,7 +301,7 @@ rt_register_lir(
 		rt_out_of_memory(rt);
 		return false;
 	}
-	memcpy(func->bytecode, lir->bytecode, lir->bytecode_size);
+	memcpy(func->bytecode, lir->bytecode, (size_t)lir->bytecode_size);
 	func->tmpvar_size = lir->tmpvar_size;
 	func->file_name = strdup(lir->file_name);
 	if (func->file_name == NULL) {
@@ -709,12 +709,12 @@ rt_make_empty_array(struct rt_env *rt, struct rt_value *val)
 
 	/* Start from size 16. */
 	arr->alloc_size = START_SIZE;
-	arr->table = malloc(sizeof(struct rt_value) * START_SIZE);
+	arr->table = malloc(sizeof(struct rt_value) * (size_t)START_SIZE);
 	if (arr->table == NULL) {
 		rt_out_of_memory(rt);
 		return false;
 	}
-	memset(arr->table, 0, sizeof(struct rt_value) * START_SIZE);
+	memset(arr->table, 0, sizeof(struct rt_value) * (size_t)START_SIZE);
 	arr->size = 0;
 
 	val->type = RT_VALUE_ARRAY;
@@ -760,17 +760,17 @@ rt_make_empty_dict(struct rt_env *rt, struct rt_value *val)
 
 	/* Start from size 16. */
 	dict->alloc_size = START_SIZE;
-	dict->key = malloc(sizeof(char *) * START_SIZE);
+	dict->key = malloc(sizeof(char *) * (size_t)START_SIZE);
 	if (dict->key == NULL) {
 		rt_out_of_memory(rt);
 		return false;
 	}
-	dict->value = malloc(sizeof(struct rt_value) * START_SIZE);
+	dict->value = malloc(sizeof(struct rt_value) * (size_t)START_SIZE);
 	if (dict->value == NULL) {
 		rt_out_of_memory(rt);
 		return false;
 	}
-	memset(dict->value, 0, sizeof(struct rt_value) * START_SIZE);
+	memset(dict->value, 0, sizeof(struct rt_value) * (size_t)START_SIZE);
 	dict->size = 0;
 
 	val->type = RT_VALUE_DICT;
@@ -2678,8 +2678,8 @@ rt_lt_helper(
 			dst_val->val.i = (src1_val->val.i < src2_val->val.i) ? 1 : 0;
 			break;
 		case RT_VALUE_FLOAT:
-			dst_val->type = RT_VALUE_FLOAT;
-			dst_val->val.f = ((float)src1_val->val.i < src2_val->val.f) ? 1 : 0;
+			dst_val->type = RT_VALUE_INT;
+			dst_val->val.i = ((float)src1_val->val.i < src2_val->val.f) ? 1 : 0;
 			break;
 		default:
 			rt_error(rt, "Value is not a number.");
@@ -2689,12 +2689,12 @@ rt_lt_helper(
 	case RT_VALUE_FLOAT:
 		switch (src2_val->type) {
 		case RT_VALUE_INT:
-			dst_val->type = RT_VALUE_FLOAT;
-			dst_val->val.f = (src1_val->val.f < (float)src2_val->val.i) ? 1 : 0;
+			dst_val->type = RT_VALUE_INT;
+			dst_val->val.i = (src1_val->val.f < (float)src2_val->val.i) ? 1 : 0;
 			break;
 		case RT_VALUE_FLOAT:
-			dst_val->type = RT_VALUE_FLOAT;
-			dst_val->val.f = (src1_val->val.f < src2_val->val.f) ? 1 : 0;
+			dst_val->type = RT_VALUE_INT;
+			dst_val->val.i = (src1_val->val.f < src2_val->val.f) ? 1 : 0;
 			break;
 		default:
 			rt_error(rt, "Value is not a number.");
@@ -2704,13 +2704,14 @@ rt_lt_helper(
 	case RT_VALUE_STRING:
 		switch (src2_val->type) {
 		case RT_VALUE_STRING:
-			dst_val->type = RT_VALUE_FLOAT;
-			dst_val->val.f = strcmp(src1_val->val.str->s, src2_val->val.str->s) < 0 ? 1 : 0;
+			dst_val->type = RT_VALUE_INT;
+			dst_val->val.i = strcmp(src1_val->val.str->s, src2_val->val.str->s) < 0 ? 1 : 0;
 			break;
 		default:
 			rt_error(rt, "Value is not a string.");
 			break;
 		}
+		break;
 	default:
 		rt_error(rt, "Value is not a number or a string.");
 		return false;
@@ -2753,8 +2754,8 @@ rt_lte_helper(
 			dst_val->val.i = (src1_val->val.i <= src2_val->val.i) ? 1 : 0;
 			break;
 		case RT_VALUE_FLOAT:
-			dst_val->type = RT_VALUE_FLOAT;
-			dst_val->val.f = ((float)src1_val->val.i <= src2_val->val.f) ? 1 : 0;
+			dst_val->type = RT_VALUE_INT;
+			dst_val->val.i = ((float)src1_val->val.i <= src2_val->val.f) ? 1 : 0;
 			break;
 		default:
 			rt_error(rt, "Value is not a number.");
@@ -2764,12 +2765,12 @@ rt_lte_helper(
 	case RT_VALUE_FLOAT:
 		switch (src2_val->type) {
 		case RT_VALUE_INT:
-			dst_val->type = RT_VALUE_FLOAT;
-			dst_val->val.f = (src1_val->val.f <= (float)src2_val->val.i) ? 1 : 0;
+			dst_val->type = RT_VALUE_INT;
+			dst_val->val.i = (src1_val->val.f <= (float)src2_val->val.i) ? 1 : 0;
 			break;
 		case RT_VALUE_FLOAT:
-			dst_val->type = RT_VALUE_FLOAT;
-			dst_val->val.f = (src1_val->val.f <= src2_val->val.f) ? 1 : 0;
+			dst_val->type = RT_VALUE_INT;
+			dst_val->val.i = (src1_val->val.f <= src2_val->val.f) ? 1 : 0;
 			break;
 		default:
 			rt_error(rt, "Value is not a number.");
@@ -2779,13 +2780,14 @@ rt_lte_helper(
 	case RT_VALUE_STRING:
 		switch (src2_val->type) {
 		case RT_VALUE_STRING:
-			dst_val->type = RT_VALUE_FLOAT;
-			dst_val->val.f = strcmp(src1_val->val.str->s, src2_val->val.str->s) <= 0 ? 1 : 0;
+			dst_val->type = RT_VALUE_INT;
+			dst_val->val.i = strcmp(src1_val->val.str->s, src2_val->val.str->s) <= 0 ? 1 : 0;
 			break;
 		default:
 			rt_error(rt, "Value is not a string.");
 			break;
 		}
+		break;
 	default:
 		rt_error(rt, "Value is not a number or a string.");
 		return false;
@@ -2828,8 +2830,8 @@ rt_gt_helper(
 			dst_val->val.i = (src1_val->val.i > src2_val->val.i) ? 1 : 0;
 			break;
 		case RT_VALUE_FLOAT:
-			dst_val->type = RT_VALUE_FLOAT;
-			dst_val->val.f = ((float)src1_val->val.i > src2_val->val.f) ? 1 : 0;
+			dst_val->type = RT_VALUE_INT;
+			dst_val->val.i = ((float)src1_val->val.i > src2_val->val.f) ? 1 : 0;
 			break;
 		default:
 			rt_error(rt, "Value is not a number.");
@@ -2839,12 +2841,12 @@ rt_gt_helper(
 	case RT_VALUE_FLOAT:
 		switch (src2_val->type) {
 		case RT_VALUE_INT:
-			dst_val->type = RT_VALUE_FLOAT;
-			dst_val->val.f = (src1_val->val.f > (float)src2_val->val.i) ? 1 : 0;
+			dst_val->type = RT_VALUE_INT;
+			dst_val->val.i = (src1_val->val.f > (float)src2_val->val.i) ? 1 : 0;
 			break;
 		case RT_VALUE_FLOAT:
-			dst_val->type = RT_VALUE_FLOAT;
-			dst_val->val.f = (src1_val->val.f > src2_val->val.f) ? 1 : 0;
+			dst_val->type = RT_VALUE_INT;
+			dst_val->val.i = (src1_val->val.f > src2_val->val.f) ? 1 : 0;
 			break;
 		default:
 			rt_error(rt, "Value is not a number.");
@@ -2854,13 +2856,14 @@ rt_gt_helper(
 	case RT_VALUE_STRING:
 		switch (src2_val->type) {
 		case RT_VALUE_STRING:
-			dst_val->type = RT_VALUE_FLOAT;
-			dst_val->val.f = strcmp(src1_val->val.str->s, src2_val->val.str->s) > 0 ? 1 : 0;
+			dst_val->type = RT_VALUE_INT;
+			dst_val->val.i = strcmp(src1_val->val.str->s, src2_val->val.str->s) > 0 ? 1 : 0;
 			break;
 		default:
 			rt_error(rt, "Value is not a string.");
 			break;
 		}
+		break;
 	default:
 		rt_error(rt, "Value is not a number or a string.");
 		return false;
@@ -2903,8 +2906,8 @@ rt_gte_helper(
 			dst_val->val.i = (src1_val->val.i >= src2_val->val.i) ? 1 : 0;
 			break;
 		case RT_VALUE_FLOAT:
-			dst_val->type = RT_VALUE_FLOAT;
-			dst_val->val.f = ((float)src1_val->val.i >= src2_val->val.f) ? 1 : 0;
+			dst_val->type = RT_VALUE_INT;
+			dst_val->val.i = ((float)src1_val->val.i >= src2_val->val.f) ? 1 : 0;
 			break;
 		default:
 			rt_error(rt, "Value is not a number.");
@@ -2914,12 +2917,12 @@ rt_gte_helper(
 	case RT_VALUE_FLOAT:
 		switch (src2_val->type) {
 		case RT_VALUE_INT:
-			dst_val->type = RT_VALUE_FLOAT;
-			dst_val->val.f = (src1_val->val.f >= (float)src2_val->val.i) ? 1 : 0;
+			dst_val->type = RT_VALUE_INT;
+			dst_val->val.i = (src1_val->val.f >= (float)src2_val->val.i) ? 1 : 0;
 			break;
 		case RT_VALUE_FLOAT:
-			dst_val->type = RT_VALUE_FLOAT;
-			dst_val->val.f = (src1_val->val.f >= src2_val->val.f) ? 1 : 0;
+			dst_val->type = RT_VALUE_INT;
+			dst_val->val.i = (src1_val->val.f >= src2_val->val.f) ? 1 : 0;
 			break;
 		default:
 			rt_error(rt, "Value is not a number.");
@@ -2929,13 +2932,14 @@ rt_gte_helper(
 	case RT_VALUE_STRING:
 		switch (src2_val->type) {
 		case RT_VALUE_STRING:
-			dst_val->type = RT_VALUE_FLOAT;
-			dst_val->val.f = strcmp(src1_val->val.str->s, src2_val->val.str->s) >= 0 ? 1 : 0;
+			dst_val->type = RT_VALUE_INT;
+			dst_val->val.i = strcmp(src1_val->val.str->s, src2_val->val.str->s) >= 0 ? 1 : 0;
 			break;
 		default:
 			rt_error(rt, "Value is not a string.");
 			break;
 		}
+		break;
 	default:
 		rt_error(rt, "Value is not a number or a string.");
 		return false;
@@ -2980,8 +2984,8 @@ rt_eq_helper(
 			dst_val->val.i = (src1_val->val.i == src2_val->val.i) ? 1 : 0;
 			break;
 		case RT_VALUE_FLOAT:
-			dst_val->type = RT_VALUE_FLOAT;
-			dst_val->val.f = ((float)src1_val->val.i == src2_val->val.f) ? 1 : 0;
+			dst_val->type = RT_VALUE_INT;
+			dst_val->val.i = ((float)src1_val->val.i == src2_val->val.f) ? 1 : 0;
 			break;
 		default:
 			rt_error(rt, "Value is not a number.");
@@ -2991,12 +2995,12 @@ rt_eq_helper(
 	case RT_VALUE_FLOAT:
 		switch (src2_val->type) {
 		case RT_VALUE_INT:
-			dst_val->type = RT_VALUE_FLOAT;
-			dst_val->val.f = (src1_val->val.f == (float)src2_val->val.i) ? 1 : 0;
+			dst_val->type = RT_VALUE_INT;
+			dst_val->val.i = (src1_val->val.f == (float)src2_val->val.i) ? 1 : 0;
 			break;
 		case RT_VALUE_FLOAT:
-			dst_val->type = RT_VALUE_FLOAT;
-			dst_val->val.f = (src1_val->val.f == src2_val->val.f) ? 1 : 0;
+			dst_val->type = RT_VALUE_INT;
+			dst_val->val.i = (src1_val->val.f == src2_val->val.f) ? 1 : 0;
 			break;
 		default:
 			rt_error(rt, "Value is not a number.");
@@ -3006,13 +3010,14 @@ rt_eq_helper(
 	case RT_VALUE_STRING:
 		switch (src2_val->type) {
 		case RT_VALUE_STRING:
-			dst_val->type = RT_VALUE_FLOAT;
-			dst_val->val.f = strcmp(src1_val->val.str->s, src2_val->val.str->s) == 0 ? 1 : 0;
+			dst_val->type = RT_VALUE_INT;
+			dst_val->val.i = strcmp(src1_val->val.str->s, src2_val->val.str->s) == 0 ? 1 : 0;
 			break;
 		default:
 			rt_error(rt, "Value is not a string.");
 			break;
 		}
+		break;
 	default:
 		rt_error(rt, "Value is not a number or a string.");
 		return false;
@@ -3055,8 +3060,8 @@ rt_neq_helper(
 			dst_val->val.i = (src1_val->val.i != src2_val->val.i) ? 1 : 0;
 			break;
 		case RT_VALUE_FLOAT:
-			dst_val->type = RT_VALUE_FLOAT;
-			dst_val->val.f = ((float)src1_val->val.i != src2_val->val.f) ? 1 : 0;
+			dst_val->type = RT_VALUE_INT;
+			dst_val->val.i = ((float)src1_val->val.i != src2_val->val.f) ? 1 : 0;
 			break;
 		default:
 			rt_error(rt, "Value is not a number.");
@@ -3066,12 +3071,12 @@ rt_neq_helper(
 	case RT_VALUE_FLOAT:
 		switch (src2_val->type) {
 		case RT_VALUE_INT:
-			dst_val->type = RT_VALUE_FLOAT;
-			dst_val->val.f = (src1_val->val.f != (float)src2_val->val.i) ? 1 : 0;
+			dst_val->type = RT_VALUE_INT;
+			dst_val->val.i = (src1_val->val.f != (float)src2_val->val.i) ? 1 : 0;
 			break;
 		case RT_VALUE_FLOAT:
-			dst_val->type = RT_VALUE_FLOAT;
-			dst_val->val.f = (src1_val->val.f != src2_val->val.f) ? 1 : 0;
+			dst_val->type = RT_VALUE_INT;
+			dst_val->val.i = (src1_val->val.f != src2_val->val.f) ? 1 : 0;
 			break;
 		default:
 			rt_error(rt, "Value is not a number.");
@@ -3081,13 +3086,14 @@ rt_neq_helper(
 	case RT_VALUE_STRING:
 		switch (src2_val->type) {
 		case RT_VALUE_STRING:
-			dst_val->type = RT_VALUE_FLOAT;
-			dst_val->val.f = strcmp(src1_val->val.str->s, src2_val->val.str->s) != 0 ? 1 : 0;
+			dst_val->type = RT_VALUE_INT;
+			dst_val->val.i = strcmp(src1_val->val.str->s, src2_val->val.str->s) != 0 ? 1 : 0;
 			break;
 		default:
 			rt_error(rt, "Value is not a string.");
 			break;
 		}
+		break;
 	default:
 		rt_error(rt, "Value is not a number or a string.");
 		return false;

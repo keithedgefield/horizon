@@ -4,8 +4,23 @@ AR=ar
 YACC=bison
 LEX=flex
 
-CPPFLAGS=-I../../include -DUSE_JIT
-CFLAGS=-O0 -g3
+CPPFLAGS=\
+	-I../../include \
+	-DUSE_JIT
+
+CFLAGS=\
+	-O0 \
+	-g3 \
+	-ffast-math \
+	-ftree-vectorize \
+	-std=gnu11 \
+	-Wall \
+	-Werror \
+	-Wextra \
+	-Wundef \
+	-Wconversion \
+	-Wno-multichar
+
 LDFLAGS=-lm
 
 LIB_OBJS=\

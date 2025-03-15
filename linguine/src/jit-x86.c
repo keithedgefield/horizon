@@ -265,7 +265,7 @@ jit_put_dword(
  */
 
 /* Check an opcode. */
-#define CONSUME_OPCODE(d)		if (!jit_get_opcode(ctx, &d)) return false
+#define CONSUME_OPCODE(d)	if (!jit_get_opcode(ctx, &d)) return false
 static INLINE bool
 jit_get_opcode(
 	struct jit_context *ctx,
@@ -381,13 +381,13 @@ jit_get_opr_string(
 		/* ebp-8: rt */											\
 		/* ebp-12: exception_handler */									\
 														\
-		/* movl $src2, %eax */		IB(0xb8); ID(src2); 						\
+		/* movl $src2, %eax */		IB(0xb8); ID((uint32_t)src2); 					\
 		/* pushl %eax */		IB(0x50);							\
 														\
-		/* movl $src1, %eax */		IB(0xb8); ID(src1); 						\
+		/* movl $src1, %eax */		IB(0xb8); ID((uint32_t)src1); 					\
 		/* pushl %eax */		IB(0x50);							\
 														\
-		/* movl $dst, %eax */		IB(0xb8); ID(dst); 						\
+		/* movl $dst, %eax */		IB(0xb8); ID((uint32_t)dst); 					\
 		/* pushl %eax */		IB(0x50);							\
 														\
 		/* movl -8(%ebp), %eax */	IB(0x8b); IB(0x45); IB(0xf8);					\
@@ -410,10 +410,10 @@ jit_get_opr_string(
 		/* ebp-8: rt */											\
 		/* ebp-12: exception_handler */									\
 														\
-		/* movl $src, %eax */		IB(0xb8); ID(src); 						\
+		/* movl $src, %eax */		IB(0xb8); ID((uint32_t)src); 					\
 		/* push %eax */			IB(0x50);							\
 														\
-		/* movl $dst, %eax */		IB(0xb8); ID(dst); 						\
+		/* movl $dst, %eax */		IB(0xb8); ID((uint32_t)dst); 					\
 		/* pushl %eax */		IB(0x50);							\
 														\
 		/* movl -8(%ebp), %eax */	IB(0x8b); IB(0x45); IB(0xf8);					\
@@ -475,9 +475,9 @@ jit_visit_assign_op(
 		/* ebp-8: rt */											\
 		/* ebp-12: exception_handler */									\
 
-		/* movl $dst, %eax */		IB(0xb8); ID(dst);
+		/* movl $dst, %eax */		IB(0xb8); ID((uint32_t)dst);
 		/* shll $3, %eax */		IB(0xc1); IB(0xe0); IB(0x03);
-		/* movl $src, %ebx */		IB(0xbb); ID(src);
+		/* movl $src, %ebx */		IB(0xbb); ID((uint32_t)src);
 		/* shll $3, %ebx */		IB(0xc1); IB(0xe3); IB(0x03);
 		/* addl (%ebp), %eax */		IB(0x03); IB(0x45); IB(0x00);
 		/* addl (%ebp), %ebx */		IB(0x03); IB(0x5d); IB(0x00);
@@ -508,7 +508,7 @@ jit_visit_iconst_op(
 		/* ebp-8: rt */											\
 		/* ebp-12: exception_handler */									\
 
-		/* movl $dst, %eax */		IB(0xb8); ID(dst);
+		/* movl $dst, %eax */		IB(0xb8); ID((uint32_t)dst);
 		/* shll $3, %eax */		IB(0xc1); IB(0xe0); IB(0x03);
 		/* addl -4(%ebp), %eax */	IB(0x03); IB(0x45); IB(0xfc);
 		/* movl $0, (%eax) */		IB(0xc7); IB(0x00); ID(0);
@@ -536,7 +536,7 @@ jit_visit_fconst_op(
 		/* ebp-8: rt */											\
 		/* ebp-12: exception_handler */									\
 
-		/* movl $dst, %eax */		IB(0xb8); ID(dst);
+		/* movl $dst, %eax */		IB(0xb8); ID((uint32_t)dst);
 		/* shll $3, %eax */		IB(0xc1); IB(0xe0); IB(0x03);
 		/* addl -4(%ebp), %eax */	IB(0x03); IB(0x45); IB(0xfc);
 		/* movl $1, (%eax) */		IB(0xc7); IB(0x00); ID(1);
@@ -565,7 +565,7 @@ jit_visit_sconst_op(
 
 		/* movl $val, %eax */			IB(0xb8); ID((uint32_t)val);
 		/* pushl %eax */			IB(0x50);
-		/* movl $dst, %eax */			IB(0xb8); ID(dst);
+		/* movl $dst, %eax */			IB(0xb8); ID((uint32_t)dst);
 		/* shll $3, %eax */			IB(0xc1); IB(0xe0); IB(0x03);
 		/* addl -4(%ebp), %eax */		IB(0x03); IB(0x45); IB(0xfc);
 		/* pushl %eax */			IB(0x50);
@@ -599,7 +599,7 @@ jit_visit_aconst_op(
 		/* ebp-8: rt */
 		/* ebp-12: exception_handler */
 
-		/* movl $dst, %eax */			IB(0xb8); ID(dst);
+		/* movl $dst, %eax */			IB(0xb8); ID((uint32_t)dst);
 		/* shll $3, %eax */			IB(0xc1); IB(0xe0); IB(0x03);
 		/* addl -4(%ebp), %eax */		IB(0x03); IB(0x45); IB(0xfc);
 		/* pushl %eax */			IB(0x50);
@@ -634,7 +634,7 @@ jit_visit_dconst_op(
 		/* ebp-8: rt */
 		/* ebp-12: exception_handler */
 
-		/* movl $dst, %eax */			IB(0xb8); ID(dst);
+		/* movl $dst, %eax */			IB(0xb8); ID((uint32_t)dst);
 		/* shll $3, %eax */			IB(0xc1); IB(0xe0); IB(0x03);
 		/* addl -4(%ebp), %eax */	IB(0x03); IB(0x45); IB(0xfc);
 		/* pushl %eax */			IB(0x50);
@@ -670,7 +670,7 @@ jit_visit_inc_op(
 		/* ebp-8: rt */
 		/* ebp-12: exception_handler */
 
-		/* movl $dst, %eax */			IB(0xb8); ID(dst);
+		/* movl $dst, %eax */			IB(0xb8); ID((uint32_t)dst);
 		/* shll $3, %eax */			IB(0xc1); IB(0xe0); IB(0x03);
 		/* addl -4(%ebp), %eax */		IB(0x03); IB(0x45); IB(0xfc);
 		/* incl 4(%eax) */			IB(0xff); IB(0x40); IB(0x04);
@@ -962,7 +962,7 @@ jit_visit_eqi_op(
 		/* ebp-8: rt */
 		/* ebp-12: exception_handler */
 
-		/* movl $src1, %eax */		IB(0xb8); ID(src1);
+		/* movl $src1, %eax */		IB(0xb8); ID((uint32_t)src1);
 		/* shll $3, %eax */		IB(0xc1); IB(0xe0); IB(0x03);
 		/* addl -4(%ebp), %eax */	IB(0x03); IB(0x45); IB(0xfc);
 
@@ -1109,7 +1109,7 @@ jit_visit_loadsymbol_op(
 
 		/* movl $src, %eax */			IB(0xb8); ID((uint32_t)src);
 		/* push %eax */				IB(0x50);
-		/* movl $dst, %eax */			IB(0xb8); ID(dst);
+		/* movl $dst, %eax */			IB(0xb8); ID((uint32_t)dst);
 		/* pushl %eax */			IB(0x50);
 		/* movl -8(%ebp), %eax */		IB(0x8b); IB(0x45); IB(0xf8);
 		/* pushl %eax */			IB(0x50);
@@ -1143,7 +1143,7 @@ jit_visit_storesymbol_op(
 		/* ebp-8: rt */
 		/* ebp-12: exception_handler */
 
-		/* movl $src, %eax */			IB(0xb8); ID(src);
+		/* movl $src, %eax */			IB(0xb8); ID((uint32_t)src);
 		/* push %eax */				IB(0x50);
 		/* movl $dst, %eax */			IB(0xb8); ID((uint32_t)dst);
 		/* pushl %eax */			IB(0x50);
@@ -1183,9 +1183,9 @@ jit_visit_loaddot_op(
 
 		/* movl field, %eax */			IB(0xb8); ID((uint32_t)field);
 		/* push %eax */				IB(0x50);
-		/* movl dict, %eax */			IB(0xb8); ID(dict);
+		/* movl dict, %eax */			IB(0xb8); ID((uint32_t)dict);
 		/* push %eax */				IB(0x50);
-		/* movl $dst, %eax */			IB(0xb8); ID(dst);
+		/* movl $dst, %eax */			IB(0xb8); ID((uint32_t)dst);
 		/* pushl %eax */			IB(0x50);
 		/* movl -8(%ebp), %eax */		IB(0x8b); IB(0x45); IB(0xf8);
 		/* pushl %eax */			IB(0x50);
@@ -1221,11 +1221,11 @@ jit_visit_storedot_op(
 		/* ebp-8: rt */
 		/* ebp-12: exception_handler */
 
-		/* movl $src, %eax */			IB(0xb8); ID(src);
+		/* movl $src, %eax */			IB(0xb8); ID((uint32_t)src);
 		/* push %eax */				IB(0x50);
 		/* movl field, %eax */			IB(0xb8); ID((uint32_t)field);
 		/* push %eax */				IB(0x50);
-		/* movl dict, %eax */			IB(0xb8); ID(dict);
+		/* movl dict, %eax */			IB(0xb8); ID((uint32_t)dict);
 		/* push %eax */				IB(0x50);
 		/* movl -8(%ebp), %eax */		IB(0x8b); IB(0x45); IB(0xf8);
 		/* pushl %eax */			IB(0x50);
@@ -1252,7 +1252,7 @@ jit_visit_call_op(
 	int arg_count;
 	int arg_tmp;
 	int arg[RT_ARG_MAX];
-	uint64_t arg_addr;
+	uint32_t arg_addr;
 	int i;
 
 	CONSUME_TMPVAR(dst);
@@ -1269,7 +1269,7 @@ jit_visit_call_op(
 		IB(0xe9);
 		ID(4 * arg_count);
 	}
-	arg_addr = (intptr_t)ctx->code;
+	arg_addr = (uint32_t)(intptr_t)ctx->code;
 	for (i = 0; i < arg_count; i++) {
 		*(int *)ctx->code = (uint32_t)arg[i];
 		ctx->code += 4;
@@ -1283,11 +1283,11 @@ jit_visit_call_op(
 
 		/* movl $arg_addr, %eax */		IB(0xb8); ID(arg_addr);
 		/* pushl %eax */			IB(0x50);
-		/* movl $arg_count, %eax */		IB(0xb8); ID(arg_count);
+		/* movl $arg_count, %eax */		IB(0xb8); ID((uint32_t)arg_count);
 		/* pushl %eax */			IB(0x50);
-		/* movl func, %eax */			IB(0xb8); ID(func);
+		/* movl func, %eax */			IB(0xb8); ID((uint32_t)func);
 		/* pushl %eax */			IB(0x50);
-		/* movl dst, %eax */			IB(0xb8); ID(dst);
+		/* movl dst, %eax */			IB(0xb8); ID((uint32_t)dst);
 		/* pushl %eax */			IB(0x50);
 		/* movl -8(%ebp), %eax */		IB(0x8b); IB(0x45); IB(0xf8);
 		/* pushl %eax */			IB(0x50);
@@ -1315,7 +1315,7 @@ jit_visit_thiscall_op(
 	int arg_count;
 	int arg_tmp;
 	int arg[RT_ARG_MAX];
-	uint64_t arg_addr;
+	uint32_t arg_addr;
 	int i;
 
 	CONSUME_TMPVAR(dst);
@@ -1333,7 +1333,7 @@ jit_visit_thiscall_op(
 		IB(0xe9);
 		ID(4 * arg_count);
 	}
-	arg_addr = (intptr_t)ctx->code;
+	arg_addr = (uint32_t)(intptr_t)ctx->code;
 	for (i = 0; i < arg_count; i++) {
 		*(int *)ctx->code = (uint32_t)arg[i];
 		ctx->code += 4;
@@ -1347,13 +1347,13 @@ jit_visit_thiscall_op(
 
 		/* movl $arg_addr, %eax */		IB(0xb8); ID(arg_addr);
 		/* pushl %eax */			IB(0x50);
-		/* movl $arg_count, %eax */		IB(0xb8); ID(arg_count);
+		/* movl $arg_count, %eax */		IB(0xb8); ID((uint32_t)arg_count);
 		/* pushl %eax */			IB(0x50);
 		/* movl symbol, %eax */			IB(0xb8); ID((uint32_t)symbol);
 		/* pushl %eax */			IB(0x50);
-		/* movl obj, %eax */			IB(0xb8); ID(obj);
+		/* movl obj, %eax */			IB(0xb8); ID((uint32_t)obj);
 		/* pushl %eax */			IB(0x50);
-		/* movl dst, %eax */			IB(0xb8); ID(dst);
+		/* movl dst, %eax */			IB(0xb8); ID((uint32_t)dst);
 		/* pushl %eax */			IB(0x50);
 		/* movl -8(%ebp), %eax */		IB(0x8b); IB(0x45); IB(0xf8);
 		/* pushl %eax */			IB(0x50);
@@ -1417,7 +1417,7 @@ jit_visit_jmpiftrue_op(
 		/* ebp-8: rt */
 		/* ebp-12: exception_handler */
 
-		/* movl $src, %eax */		IB(0xb8); ID(src);
+		/* movl $src, %eax */		IB(0xb8); ID((uint32_t)src);
 		/* shll $3, %eax */		IB(0xc1); IB(0xe0); IB(0x03);
 		/* addl -4(%ebp), %eax */	IB(0x03); IB(0x45); IB(0xfc);
 		/* movl 4(%eax), %eax */	IB(0x8b); IB(0x40); IB(0x04);
@@ -1460,7 +1460,7 @@ jit_visit_jmpiffalse_op(
 		/* ebp-8: rt */
 		/* ebp-12: exception_handler */
 
-		/* movl $src, %eax */		IB(0xb8); ID(src);
+		/* movl $src, %eax */		IB(0xb8); ID((uint32_t)src);
 		/* shll $3, %eax */		IB(0xc1); IB(0xe0); IB(0x03);
 		/* addl -4(%ebp), %eax */	IB(0x03); IB(0x45); IB(0xfc);
 		/* movl 4(%eax), %eax */	IB(0x8b); IB(0x40); IB(0x04);
@@ -1477,7 +1477,7 @@ jit_visit_jmpiffalse_op(
 
 	ASM {
 		/* Patched later. */
-		/* je 6 */				IB(0x0f); IB(0x85); ID(0);
+		/* je 6 */			IB(0x0f); IB(0x85); ID(0);
 	}
 
 	return true;
@@ -1506,7 +1506,7 @@ jit_visit_jmpifeq_op(
 
 	ASM {
 		/* Patched later. */
-		/* je 6 */				IB(0x0f); IB(0x84); ID(0);
+		/* je 6 */			IB(0x0f); IB(0x84); ID(0);
 	}
 
 	return true;

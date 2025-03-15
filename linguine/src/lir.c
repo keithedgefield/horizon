@@ -193,7 +193,7 @@ lir_build(
 		return false;
 	}
 	(*lir_func)->bytecode_size = bytecode_top;
-	memcpy((*lir_func)->bytecode, bytecode, bytecode_top);
+	memcpy((*lir_func)->bytecode, bytecode, (size_t)bytecode_top);
 
 	/* Copy the file name. */
 	(*lir_func)->file_name = strdup(hir_func->val.func.file_name);
@@ -1644,10 +1644,10 @@ patch_block_address(void)
 	for (i = 0; i < loc_count; i++) {
 		offset = loc_tbl[i].offset;
 		addr = loc_tbl[i].block->addr;
-		bytecode[offset] = (addr >> 24) & 0xff;
-		bytecode[offset + 1] = (addr >> 16) & 0xff;
-		bytecode[offset + 2] = (addr >> 8) & 0xff;
-		bytecode[offset + 3] = addr & 0xff;
+		bytecode[offset] = (uint8_t)((addr >> 24) & 0xff);
+		bytecode[offset + 1] = (uint8_t)((addr >> 16) & 0xff);
+		bytecode[offset + 2] = (uint8_t)((addr >> 8) & 0xff);
+		bytecode[offset + 3] = (uint8_t)(addr & 0xff);
 	}
 }
 
