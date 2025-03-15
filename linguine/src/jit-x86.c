@@ -13,7 +13,7 @@
 
 #if defined(ARCH_X86) && defined(USE_JIT)
 
-#include "runtime.h"
+#include "linguine/runtime.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -89,6 +89,9 @@ struct jit_context {
 };
 
 /* Forward declaration */
+static bool jit_map_memory_region(void);
+static void jit_map_writable(void);
+static void jit_map_executable(void);
 static bool jit_visit_bytecode(struct jit_context *ctx);
 static bool jit_patch_branch(struct jit_context *ctx, int patch_index);
 
@@ -195,6 +198,9 @@ jit_free(
 	 struct rt_env *rt,
 	 struct rt_func *func)
 {
+	UNUSED_PARAMETER(rt);
+	UNUSED_PARAMETER(func);
+
 	/* XXX: */
 }
 
@@ -357,7 +363,7 @@ jit_get_opr_string(
 {
 	int len;
 
-	len = strlen((const char *)&ctx->func->bytecode[ctx->lpc]);
+	len = (int)strlen((const char *)&ctx->func->bytecode[ctx->lpc]);
 	if (ctx->lpc + len + 1 > ctx->func->bytecode_size) {
 		rt_error(ctx->rt, BROKEN_BYTECODE);
 		return false;
@@ -439,7 +445,6 @@ jit_visit_lineinfo_op(
 	struct jit_context *ctx)
 {
 	uint32_t line;
-	uint64_t addr;
 
 	CONSUME_IMM32(line);
 
@@ -462,7 +467,6 @@ static INLINE bool
 jit_visit_assign_op(
 	struct jit_context *ctx)
 {
-	int pc;
 	int dst;
 	int src;
 
@@ -659,7 +663,6 @@ static INLINE bool
 jit_visit_inc_op(
 	struct jit_context *ctx)
 {
-	struct rt_value *val;
 	int dst;
 
 	CONSUME_TMPVAR(dst);
@@ -966,7 +969,7 @@ jit_visit_eqi_op(
 		/* shll $3, %eax */		IB(0xc1); IB(0xe0); IB(0x03);
 		/* addl -4(%ebp), %eax */	IB(0x03); IB(0x45); IB(0xfc);
 
-		/* movl $src2, %ebx */		IB(0xbb); ID(src2);
+		/* movl $src2, %ebx */		IB(0xbb); ID((uint32_t)src2);
 		/* shll $3, %ebx */		IB(0xc1); IB(0xe3); IB(0x03);
 		/* addl -4(%ebp), %ebx */	IB(0x03); IB(0x5d); IB(0xfc);
 
@@ -1267,11 +1270,11 @@ jit_visit_call_op(
 	ASM {
 		/* jmp (5 + arg_count * 4) */
 		IB(0xe9);
-		ID(4 * arg_count);
+		ID((uint32_t)(4 * arg_count));
 	}
 	arg_addr = (uint32_t)(intptr_t)ctx->code;
 	for (i = 0; i < arg_count; i++) {
-		*(int *)ctx->code = (uint32_t)arg[i];
+		*(int *)ctx->code = arg[i];
 		ctx->code += 4;
 	}
 
@@ -1331,11 +1334,11 @@ jit_visit_thiscall_op(
 	ASM {
 		/* jmp (5 + arg_count * 4) */
 		IB(0xe9);
-		ID(4 * arg_count);
+		ID((uint32_t)(4 * arg_count));
 	}
 	arg_addr = (uint32_t)(intptr_t)ctx->code;
 	for (i = 0; i < arg_count; i++) {
-		*(int *)ctx->code = (uint32_t)arg[i];
+		*(int *)ctx->code = arg[i];
 		ctx->code += 4;
 	}
 
@@ -1378,7 +1381,7 @@ jit_visit_jmp_op(
 	uint32_t target_lpc;
 
 	CONSUME_IMM32(target_lpc);
-	if (target_lpc >= ctx->func->bytecode_size + 1) {
+	if (target_lpc >= (uint32_t)(ctx->func->bytecode_size + 1)) {
 		rt_error(ctx->rt, BROKEN_BYTECODE);
 		return false;
 	}
@@ -1407,7 +1410,7 @@ jit_visit_jmpiftrue_op(
 
 	CONSUME_TMPVAR(src);
 	CONSUME_IMM32(target_lpc);
-	if (target_lpc >= ctx->func->bytecode_size + 1) {
+	if (target_lpc >= (uint32_t)(ctx->func->bytecode_size + 1)) {
 		rt_error(ctx->rt, BROKEN_BYTECODE);
 		return false;
 	}
@@ -1450,7 +1453,7 @@ jit_visit_jmpiffalse_op(
 
 	CONSUME_TMPVAR(src);
 	CONSUME_IMM32(target_lpc);
-	if (target_lpc >= ctx->func->bytecode_size + 1) {
+	if (target_lpc >= (uint32_t)(ctx->func->bytecode_size + 1)) {
 		rt_error(ctx->rt, BROKEN_BYTECODE);
 		return false;
 	}
@@ -1493,7 +1496,7 @@ jit_visit_jmpifeq_op(
 
 	CONSUME_TMPVAR(src);
 	CONSUME_IMM32(target_lpc);
-	if (target_lpc >= ctx->func->bytecode_size + 1) {
+	if (target_lpc >= (uint32_t)(ctx->func->bytecode_size + 1)) {
 		rt_error(ctx->rt, BROKEN_BYTECODE);
 		return false;
 	}
@@ -1572,7 +1575,7 @@ jit_visit_bytecode(
 			rt_error(ctx->rt, "Too big code.");
 			return false;
 		}
-		ctx->pc_entry[ctx->pc_entry_count].lpc = ctx->lpc;
+		ctx->pc_entry[ctx->pc_entry_count].lpc = (uint32_t)ctx->lpc;
 		ctx->pc_entry[ctx->pc_entry_count].code = ctx->code;
 		ctx->pc_entry_count++;
 
@@ -1793,7 +1796,7 @@ jit_patch_branch(
 		ASM {
 			/* jmp offset */
 			IB(0xe9);
-			ID(offset);
+			ID((uint32_t)offset);
 		}
 	} else if (ctx->branch_patch[patch_index].type == PATCH_JE) {
 		offset -= 6;
@@ -1801,7 +1804,7 @@ jit_patch_branch(
 			/* je offset */
 			IB(0x0f);
 			IB(0x84);
-			ID(offset);
+			ID((uint32_t)offset);
 		}
 	} else if (ctx->branch_patch[patch_index].type == PATCH_JNE) {
 		offset -= 6;
@@ -1809,7 +1812,7 @@ jit_patch_branch(
 			/* jne offset */
 			IB(0x0f);
 			IB(0x85);
-			ID(offset);
+			ID((uint32_t)offset);
 		}
 	}
 
