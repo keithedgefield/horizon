@@ -26,7 +26,7 @@ const char version[] =
 	"Linguine CLI Version 0.0.1\n";
 
 const char usage[] =
-	"Usage: linguine [options] <source file>\n"
+	"Usage: linguine [-c output-file] [-a output-file] [-d output-file] <source file>\n"
 	"  -c   Compile to a bytecode file.\n"
 	"  -a   Compile to an app C source.\n"
 	"  -d   Compile to a DLL C source.\n"
@@ -35,9 +35,9 @@ const char usage[] =
 	"  -v   Show a version.\n";
 
 const char options[] =
-	"c"	/* Compile to bytecode file. */
-	"a"	/* Compile to C app. */
-	"d"	/* Compile to C DLL. */
+	"c:"	/* Compile to bytecode file. */
+	"a:"	/* Compile to C app. */
+	"d:"	/* Compile to C DLL. */
 	"i"	/* Use interpreter instead of JIT compiler. */
 	"h"	/* Show help. */
 	"v";	/* Show version. */
@@ -46,6 +46,7 @@ bool opt_compile;
 bool opt_compile_to_lsc;
 bool opt_compile_to_app;
 bool opt_compile_to_dll;
+const char *opt_output;
 
 /* Config */
 extern bool linguine_conf_use_jit;
@@ -95,14 +96,17 @@ static void parse_options(int argc, char *argv[])
 		case 'c':
 			opt_compile = true;
 			opt_compile_to_lsc = true;
+			opt_output = optarg;
 			break;
 		case 'a':
 			opt_compile = true;
 			opt_compile_to_app = true;
+			opt_output = optarg;
 			break;
 		case 'd':
 			opt_compile = true;
 			opt_compile_to_dll = true;
+			opt_output = optarg;
 			break;
 		case 'i':
 			linguine_conf_use_jit = false;
@@ -181,7 +185,7 @@ static bool run_source_compiler(int argc, char *argv[])
 {
 	int i, j;
 
-	if (!cback_init("linguine.c"))
+	if (!cback_init(opt_output))
 		return false;
 
 	for (i = optind; i < argc; i++) {

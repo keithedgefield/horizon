@@ -1283,6 +1283,7 @@ bool cback_finalize_standalone(void)
 	fprintf(fp, "\n");
 	fprintf(fp, "    return true;\n");
 	fprintf(fp, "}\n");
+	fprintf(fp, "\n");
 	fprintf(fp, "static bool L_readline(struct rt_env *rt)\n");
 	fprintf(fp, "{\n");
 	fprintf(fp, "    struct rt_value ret;\n");
@@ -1300,23 +1301,42 @@ bool cback_finalize_standalone(void)
 	fprintf(fp, "    return true;\n");
 	fprintf(fp, "}\n");
 	fprintf(fp, "\n");
+	fprintf(fp, "static bool install_intrinsics(struct rt_env *rt)\n");
+	fprintf(fp, "{\n");
+	fprintf(fp, "    if (!rt_register_cfunc(rt, \"print\", 1, print_param, L_print))\n");
+	fprintf(fp, "        return 1;\n");
+	fprintf(fp, "    if (!rt_register_cfunc(rt, \"readline\", 0, NULL, L_readline))\n");
+	fprintf(fp, "        return 1;\n");
+	fprintf(fp, "\n");
+	fprintf(fp, "    return true;\n");
+	fprintf(fp, "}\n");
+	fprintf(fp, "\n");
 	fprintf(fp, "int main(int argc, char *argv)");
 	fprintf(fp, "{\n");
 	fprintf(fp, "    struct rt_env *rt;\n");
 	fprintf(fp, "    struct rt_value ret;\n");
 	fprintf(fp, "    const char *print_param[] = {\"msg\"};\n");
+	fprintf(fp, "\n");
+	fprintf(fp, "    /* Create a runtime. */\n");
 	fprintf(fp, "    if (!rt_create(&rt))\n");
 	fprintf(fp, "        return 1;\n");
+	fprintf(fp, "\n");
+	fprintf(fp, "    /* Install intrinsics. */\n");
+	fprintf(fp, "    if (!install_intrinsics(rt))\n");
+	fprintf(fp, "        return 1;\n");
+	fprintf(fp, "\n");
+	fprintf(fp, "    /* Install app functions. */");
 	fprintf(fp, "    if (!L_dll_init(rt))\n");
 	fprintf(fp, "        return 1;\n");
-	fprintf(fp, "    if (!rt_register_cfunc(rt, \"print\", 1, print_param, L_print))\n");
-	fprintf(fp, "        return 1;\n");
-	fprintf(fp, "    if (!rt_register_cfunc(rt, \"readline\", 0, NULL, L_readline))\n");
-	fprintf(fp, "        return 1;\n");
+	fprintf(fp, "\n");
+	fprintf(fp, "    /* Call app main. */\n");
 	fprintf(fp, "    if (!rt_call_with_name(rt, \"main\", NULL, 0, NULL, &ret))\n");
 	fprintf(fp, "        return 1;\n");
+	fprintf(fp, "\n");
+	fprintf(fp, "    /* Destroy a runtime. */\n");
 	fprintf(fp, "    if (!rt_destroy(rt))\n");
 	fprintf(fp, "        return 1;\n");
+	fprintf(fp, "\n");
 	fprintf(fp, "    return ret.val.i;\n");
 	fprintf(fp, "}\n");
 
@@ -1333,23 +1353,23 @@ static bool cback_write_dll_init(void)
 	fprintf(fp, "bool L_dll_init(struct rt_env *rt)\n");
 	fprintf(fp, "{\n");
 	for (i = 0; i < func_count; i++) {
-		fprintf(fp, "{\n");
+		fprintf(fp, "    {\n");
 		if (func_table[i].param_count > 0) {
-			fprintf(fp, "const char *params[] = {");
+			fprintf(fp, "        const char *params[] = {");
 			for (j = 0; j < func_table[i].param_count; j++)
 				fprintf(fp, "\"%s\",", func_table[i].param_name[i]);
 			fprintf(fp, "};\n");
-			fprintf(fp, "if (!rt_register_cfunc(rt, \"%s\", %d, params, L_%s))\n",
+			fprintf(fp, "        if (!rt_register_cfunc(rt, \"%s\", %d, params, L_%s))\n",
 				func_table[i].name, func_table[i].param_count, func_table[i].name);
-			fprintf(fp, "    return false;\n");
+			fprintf(fp, "            return false;\n");
 		} else {
-			fprintf(fp, "if (!rt_register_cfunc(rt, \"%s\", 0, NULL, L_%s))\n",
+			fprintf(fp, "        if (!rt_register_cfunc(rt, \"%s\", 0, NULL, L_%s))\n",
 				func_table[i].name, func_table[i].name);
-			fprintf(fp, "    return false;\n");
+			fprintf(fp, "            return false;\n");
 		}
-		fprintf(fp, "}\n");
+		fprintf(fp, "    }\n");
 	}
-	fprintf(fp, "return true;\n");
+	fprintf(fp, "    return true;\n");
 	fprintf(fp, "}\n");
 	fprintf(fp, "\n");
 
