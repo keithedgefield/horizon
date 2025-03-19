@@ -9,7 +9,6 @@ CPPFLAGS=\
 	-DUSE_JIT
 
 CFLAGS=\
-	-marm \
 	-O0 \
 	-g3 \
 	-ffast-math \
