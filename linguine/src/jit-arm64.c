@@ -161,6 +161,8 @@ jit_map_memory_region(
 	jit_code_region_cur = jit_code_region;
 	jit_code_region_tail = jit_code_region + CODE_MAX / 4;
 
+	memset(jit_code_region, 0, CODE_MAX);
+
 	return true;
 }
 

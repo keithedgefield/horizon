@@ -1,6 +1,6 @@
-CC=arm-linux-gnueabihf-gcc
-LD=arm-linux-gnueabihf-ld
-AR=arm-linux-gnueabihf-ar
+CC=gcc
+LD=ld
+AR=ar
 YACC=bison
 LEX=flex
 
@@ -9,6 +9,7 @@ CPPFLAGS=\
 	-DUSE_JIT
 
 CFLAGS=\
+	-marm \
 	-O0 \
 	-g3 \
 	-ffast-math \

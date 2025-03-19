@@ -163,6 +163,8 @@ jit_map_memory_region(
 	jit_code_region_cur = jit_code_region;
 	jit_code_region_tail = jit_code_region + CODE_MAX / 4;
 
+	memset(jit_code_region, 0, CODE_MAX);
+
 	return true;
 }
 
@@ -285,10 +287,10 @@ jit_put_movw(
 	uint32_t imm)
 {
 	if (!jit_put_word(ctx,
-			  0xe3000000 | 			/* mov */
+			  0xe3000000 | 			/* movw */
 			  (uint32_t)(rd << 12) |	/* rd */
 			  (imm & 0xfff) |		/* imm[11:0] */
-			  ((imm >> 12) & 0xff) << 16))	/* imm[15:12] */
+			  ((imm >> 12) & 0xf) << 16))	/* imm[15:12] */
 		return false;
 	return true;
 }
