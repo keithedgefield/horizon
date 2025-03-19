@@ -1,6 +1,6 @@
-CC=gcc
-LD=ld
-AR=ar
+CC=arm-linux-gnueabihf-gcc
+LD=arm-linux-gnueabihf-ld
+AR=arm-linux-gnueabihf-ar
 YACC=bison
 LEX=flex
 
@@ -31,6 +31,7 @@ LIB_OBJS=\
 	lir.o \
 	runtime.o \
 	jit-arm64.o \
+	jit-arm32.o \
 	jit-x86_64.o \
 	jit-x86.o \
 	cback.o
@@ -74,6 +75,9 @@ runtime.o: ../../src/runtime.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
 jit-arm64.o: ../../src/jit-arm64.c
+	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
+jit-arm32.o: ../../src/jit-arm32.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
 jit-x86_64.o: ../../src/jit-x86_64.c

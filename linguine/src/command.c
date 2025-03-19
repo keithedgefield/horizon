@@ -56,7 +56,7 @@ static const char *print_param[] = {"msg"};
 static char source_text[1 * 1024 * 1024];
 
 static void parse_options(int argc, char *argv[]);
-static bool run_interpreter(int argc, char *argv[]);
+static bool run_interpreter(int argc, char *argv[], int *ret);
 static bool run_source_compiler(int argc, char *argv[]);
 static bool run_binary_compiler(int argc, char *argv[]);
 static bool load_source_file(char *fname);
@@ -66,10 +66,13 @@ static bool cfunc_readline(struct rt_env *rt);
 
 int main(int argc, char *argv[])
 {
+	int ret;
+
 	/* Parse command line options. */
 	parse_options(argc, argv);
 
 	/* Run. */
+	ret = 0;
 	if (opt_compile_to_dll || opt_compile_to_app) {
 		/* Translate to a C source file. */
 		if (!run_source_compiler(argc, argv))
@@ -80,11 +83,11 @@ int main(int argc, char *argv[])
 			return 1;
 	} else {
 		/* Run by the interpreter. */
-		if (!run_interpreter(argc, argv))
+		if (!run_interpreter(argc, argv, &ret))
 			return 1;
 	}
 
-	return 0;
+	return ret;
 }
 
 static void parse_options(int argc, char *argv[])
@@ -132,7 +135,7 @@ static void parse_options(int argc, char *argv[])
 	}
 }
 
-static bool run_interpreter(int argc, char *argv[])
+static bool run_interpreter(int argc, char *argv[], int *retval)
 {
 	struct rt_env *rt;
 	struct rt_value ret;
@@ -167,7 +170,7 @@ static bool run_interpreter(int argc, char *argv[])
 	/* Run the main function. */
 	if (!rt_call_with_name(rt, "main", NULL, 0, NULL, &ret)) {
 		print_error(rt);
-		return 1;
+		return false;
 	}
 
 	/* Destroy a runtime. */
@@ -175,7 +178,8 @@ static bool run_interpreter(int argc, char *argv[])
 		return false;
 
 	/* Return a result value. */
-	return ret.val.i;
+	*retval = ret.val.i;
+	return true;
 }
 
 static bool run_binary_compiler(int argc, char *argv[])

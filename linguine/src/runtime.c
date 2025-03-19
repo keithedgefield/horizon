@@ -493,6 +493,7 @@ rt_call(
 				return false;
 			}
 			//printf("Returned from JIT code (true).\n");
+			//printf("%d: %s\n", rt->frame->tmpvar[0].type, rt->frame->tmpvar[0].val.str->s);
 		} else {
 			/* Call the bytecode interpreter. */
 			if (!rt_visit_bytecode(rt, func))

@@ -150,6 +150,8 @@ static bool
 jit_map_memory_region(
 	void)
 {
+	assert(jit_code_region == NULL);
+
 #if defined(TARGET_WINDOWS)
 	jit_code_region = VirtualAlloc(NULL, CODE_MAX, MEM_COMMIT, PAGE_READWRITE);
 #else
@@ -283,7 +285,7 @@ jit_put_movw(
 	uint32_t imm)
 {
 	if (!jit_put_word(ctx,
-			  0xe3a00000 | 			/* move */
+			  0xe3000000 | 			/* mov */
 			  (uint32_t)(rd << 12) |	/* rd */
 			  (imm & 0xfff) |		/* imm[11:0] */
 			  ((imm >> 12) & 0xff) << 16))	/* imm[15:12] */
@@ -450,7 +452,7 @@ jit_put_bal(
 {
 	if (!jit_put_word(ctx,
 			  0xea000000 |		/* bal */
-			  (imm / 4 - 2)))	/* imm */
+			  ((imm / 4 - 2) & 0xffffff)))	/* imm */
 		return false;
 	return true;
 }
@@ -463,8 +465,8 @@ jit_put_beq(
 	uint32_t imm)
 {
 	if (!jit_put_word(ctx,
-			  0x0a000000 |		/* beq */
-			  (imm / 4 - 2)))	/* imm */
+			  0x0a000000 |			/* beq */
+			  ((imm / 4 - 2) & 0xffffff)))	/* imm */
 		return false;
 	return true;
 }
@@ -478,7 +480,7 @@ jit_put_bne(
 {
 	if (!jit_put_word(ctx,
 			  0x1a000000 |		/* bne */
-			  (imm / 4 - 2)))	/* imm */
+			  ((imm / 4 - 2) & 0xffffff)))	/* imm */
 		return false;
 	return true;
 }
@@ -845,21 +847,21 @@ jit_visit_sconst_op(
 		
 		/* Arg1 r0: rt */
 		MOV		(REG_R0, REG_R11);
-
+	
 		/* Arg2 r1: &rt->frame->tmpvar[dst] */
 		MOVW		(REG_R1, (uint32_t)dst);	/* dst */
 		LSL_3		(REG_R1, REG_R1);		/* dst * sizeof(struct rt_value) */
 		ADD		(REG_R1, REG_R1, REG_R12);
-
+	
 		/* Arg3: r2: val */
 		MOVW		(REG_R2, (uint32_t)val & 0xffff);
 		MOVT		(REG_R2, ((uint32_t)val >> 16) & 0xffff);
-
+	
 		/* Call rt_make_string(). */
 		MOVW		(REG_R3, ((uint32_t)rt_make_string) & 0xffff);
 		MOVT		(REG_R3, (((uint32_t)rt_make_string) >> 16) & 0xffff);
 		BLX		(REG_R3);
-
+	
 		/* If failed: */
 		CMP_IMM		(REG_R0, 0);
 		POP2		(REG_R12, REG_LR);
@@ -1864,11 +1866,11 @@ jit_visit_bytecode(
 		MOV		(REG_R11, REG_R0);
 
 		/* x1 = *rt->frame = &rt->frame->tmpvar[0] */
-		LDR		(REG_R11, REG_R11, 0);
 		LDR		(REG_R12, REG_R11, 0);
+		LDR		(REG_R12, REG_R12, 0);
 
 		/* Skip an exception handler. */
-		BAL		(48);
+		BAL		(44);
 	}
 
 	/* Put an exception handler. */
