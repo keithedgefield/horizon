@@ -494,9 +494,9 @@ rt_register_bytecode_function(
 			break;
 
 		/* Check "End Function". */
-		pos += lfunc.bytecode_size + 1;
+		(*pos) += lfunc.bytecode_size + 1;
 		line = rt_read_bytecode_line(data, size, pos);
-		if (strcmp(line, "End Function") != 0)
+		if (line == NULL || strcmp(line, "End Function") != 0)
 			break;
 
 		succeeded = true;
