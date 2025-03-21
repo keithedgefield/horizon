@@ -20,7 +20,7 @@ make
     print("Hello, World!");
         return 0;
 	}
-	```
+```
 
 ## Syntax
 

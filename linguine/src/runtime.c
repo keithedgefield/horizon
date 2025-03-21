@@ -52,6 +52,8 @@ static char text_buf[65536];
 /* Forward declarations. */
 static void rt_free_func(struct rt_env *rt, struct rt_func *func);
 static bool rt_register_lir(struct rt_env *rt, struct lir_func *lir);
+static bool rt_register_bytecode_function(struct rt_env *rt, uint8_t *data, uint32_t size, int *pos, char *file_name);
+static const char *rt_read_bytecode_line(uint8_t *data, uint32_t size, int *pos);
 static bool rt_enter_frame(struct rt_env *rt, struct rt_func *func);
 static void rt_leave_frame(struct rt_env *rt);
 static bool rt_expand_array(struct rt_env *rt, struct rt_value *array, int size);
@@ -341,15 +343,200 @@ rt_register_lir(
 /*
  * Register functions from bytecode data.
  */
-bool rt_register_bytecode(struct rt_env *rt, uint32_t size, uint8_t *data)
+bool
+rt_register_bytecode(
+	struct rt_env *rt,
+	uint32_t size,
+	uint8_t *data)
 {
-	assert(NOT_IMPLEMENTED);
+	char *file_name;
+	const char *line;
+	int pos, func_count, i;
+	bool succeeded;
 
-	UNUSED_PARAMETER(rt);
-	UNUSED_PARAMETER(size);
-	UNUSED_PARAMETER(data);
+	pos = 0;
+	file_name = NULL;
+	succeeded = false;
+	do {
+		/* Check "Linguine Bytecode". */
+		line = rt_read_bytecode_line(data, size, &pos);
+		if (line == NULL || strcmp(line, "Linguine Bytecode") != 0)
+			break;
 
-	return false;
+		/* Check "Source". */
+		line = rt_read_bytecode_line(data, size, &pos);
+		if (line == NULL || strcmp(line, "Source") != 0)
+			break;
+
+		/* Get a source file name. */
+		line = rt_read_bytecode_line(data, size, &pos);
+		if (line == NULL)
+			break;
+		file_name = strdup(line);
+		if (file_name == NULL)
+			break;
+
+		/* Check "Number Of Functions". */
+		line = rt_read_bytecode_line(data, size, &pos);
+		if (line == NULL || strcmp(line, "Number Of Functions") != 0)
+			break;
+
+		/* Get a number of functions. */
+		line = rt_read_bytecode_line(data, size, &pos);
+		if (line == NULL)
+			break;
+		func_count = atoi(line);
+
+		/* Read functions. */
+		for (i = 0; i < func_count; i++) {
+			if (!rt_register_bytecode_function(rt, data, size, &pos, file_name))
+				break;
+		}
+
+		succeeded = true;
+	} while (0);
+
+	if (file_name != NULL)
+		free(file_name);
+
+	if (!succeeded) {
+		rt_error(rt, "Failed to load bytecode.");
+		return false;
+	}
+
+	return true;
+}
+
+static bool
+rt_register_bytecode_function(
+	struct rt_env *rt,
+	uint8_t *data,
+	uint32_t size,
+	int *pos,
+	char *file_name)
+{
+	struct lir_func lfunc;
+	const char *line;
+	int i;
+	bool succeeded;
+
+	memset(&lfunc, 0, sizeof(lfunc));
+	lfunc.file_name = file_name;
+
+	succeeded = false;
+	do {
+		/* Check "Begin Function". */
+		line = rt_read_bytecode_line(data, size, pos);
+		if (line == NULL || strcmp(line, "Begin Function") != 0)
+			break;
+
+		/* Check "Name". */
+		line = rt_read_bytecode_line(data, size, pos);
+		if (line == NULL || strcmp(line, "Name") != 0)
+			break;
+
+		/* Get a function name. */
+		line = rt_read_bytecode_line(data, size, pos);
+		if (line == NULL)
+			break;
+		lfunc.func_name = strdup(line);
+		if (lfunc.func_name == NULL)
+			break;
+
+		/* Check "Parameters". */
+		line = rt_read_bytecode_line(data, size, pos);
+		if (line == NULL || strcmp(line, "Parameters") != 0)
+			break;
+
+		/* Get number of parameters. */
+		line = rt_read_bytecode_line(data, size, pos);
+		if (line == NULL)
+			break;
+		lfunc.param_count = atoi(line);
+
+		/* Get parameters. */
+		for (i = 0; i < lfunc.param_count; i++) {
+			line = rt_read_bytecode_line(data, size, pos);
+			if (line == NULL)
+				break;
+			lfunc.param_name[i] = strdup(line);
+			if (lfunc.param_name[i] == NULL)
+				break;
+		}
+		if (i != lfunc.param_count)
+			break;
+
+		/* Check "Local Size". */
+		line = rt_read_bytecode_line(data, size, pos);
+		if (line == NULL || strcmp(line, "Local Size") != 0)
+			break;
+
+		/* Get a local size. */
+		line = rt_read_bytecode_line(data, size, pos);
+		if (line == NULL)
+			break;
+		lfunc.tmpvar_size = atoi(line);
+
+		/* Check "Bytecode Size". */
+		line = rt_read_bytecode_line(data, size, pos);
+		if (line == NULL || strcmp(line, "Bytecode Size") != 0)
+			break;
+
+		/* Get a bytecode size. */
+		line = rt_read_bytecode_line(data, size, pos);
+		if (line == NULL)
+			break;
+		lfunc.bytecode_size = atoi(line);
+
+		/* Load LIR. */
+		lfunc.bytecode = data + *pos;
+		if (!rt_register_lir(rt, &lfunc))
+			break;
+
+		/* Check "End Function". */
+		pos += lfunc.bytecode_size + 1;
+		line = rt_read_bytecode_line(data, size, pos);
+		if (strcmp(line, "End Function") != 0)
+			break;
+
+		succeeded = true;
+	} while (0);
+
+	if (lfunc.func_name != NULL)
+		free(lfunc.func_name);
+
+	for (i = 0; i < RT_ARG_MAX; i++) {
+		if (lfunc.param_name[i] != NULL)
+			free(lfunc.param_name[i]);
+	}
+
+	if (!succeeded)
+		return false;
+
+	return true;
+}
+
+static const char *
+rt_read_bytecode_line(
+	uint8_t *data,
+	uint32_t size,
+	int *pos)
+{
+	static char line[1024];
+	int i;
+
+	for (i = 0; i < (int)sizeof(line); i++) {
+		if (*pos >= (int)size)
+			return NULL;
+
+		line[i] = (char)data[*pos];
+		(*pos)++;
+		if (line[i] == '\n') {
+			line[i] = '\0';
+			return line;
+		}
+	}
+	return NULL;
 }
 
 /*
