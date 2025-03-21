@@ -175,7 +175,7 @@ jit_map_writable(
 {
 #if defined(TARGET_WINDOWS)
 	DWORD dwOldProt;
-	VirtualProtect(jit_code_region, CODE_MAX, PAGE_READ_WRITE, &dwOldProt);
+	VirtualProtect(jit_code_region, CODE_MAX, PAGE_READWRITE, &dwOldProt);
 #else
 	mprotect(jit_code_region, CODE_MAX, PROT_READ | PROT_WRITE);
 #endif

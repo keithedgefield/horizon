@@ -16,12 +16,6 @@ make
 ./linguine ../../hello.ls
 ```
 
-{
-    print("Hello, World!");
-        return 0;
-	}
-```
-
 ## Syntax
 
 ### Assigning a value
